@@ -1,0 +1,8 @@
+.DS_Store
+.idea/
+*.sw*
+*~
+/build/
+node_modules/
+webroot/
+/workspace/
