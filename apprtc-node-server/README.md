@@ -17,7 +17,6 @@ This still a work in progress. We are in the process of cleaning up the code and
 Setting up the environment just requires the following:
 
 ```
-git clone https://github.com/ISBX/apprtc-node-server.git ./apprtc-node-server
 cd ./apprtc-node-server
 npm install
 ```
