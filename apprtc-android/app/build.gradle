@@ -1,0 +1,42 @@
+apply plugin: 'com.android.application'
+
+android {
+  compileSdkVersion 23
+  buildToolsVersion '25.0.0'
+
+  sourceSets.main {
+    jniLibs.srcDir 'libs'
+    jni.srcDirs = [] //disable automatic ndk-build call
+  }
+
+
+  defaultConfig {
+    applicationId "com.xiaominfc.apprtc"
+    minSdkVersion 16
+    targetSdkVersion 21
+
+    versionCode 15663
+    versionName "r15663"
+
+//    testApplicationId "org.appspot.apprtc.test"
+//    testInstrumentationRunner "android.test.InstrumentationTestRunner"
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled true
+      proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+    }
+  }
+
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  compile files('libs/audio_device_java.jar')
+  compile files('libs/autobanh.jar')
+  compile files('libs/base_java.jar')
+  compile files('libs/libjingle_peerconnection.jar')
+}
