@@ -14,10 +14,8 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.KeyEvent;
@@ -34,10 +32,11 @@ import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import java.util.ArrayList;
-import java.util.Random;
 import org.json.JSONArray;
 import org.json.JSONException;
+
+import java.util.ArrayList;
+import java.util.Random;
 
 /**
  * Handles the initial setup where the user selects which room to join.
@@ -52,90 +51,14 @@ public class ConnectActivity extends Activity {
   private ImageButton addFavoriteButton;
   private EditText roomEditText;
   private ListView roomListView;
-  private SharedPreferences sharedPref;
-  private String keyprefVideoCallEnabled;
-  private String keyprefScreencapture;
-  private String keyprefCamera2;
-  private String keyprefResolution;
-  private String keyprefFps;
-  private String keyprefCaptureQualitySlider;
-  private String keyprefVideoBitrateType;
-  private String keyprefVideoBitrateValue;
-  private String keyprefVideoCodec;
-  private String keyprefAudioBitrateType;
-  private String keyprefAudioBitrateValue;
-  private String keyprefAudioCodec;
-  private String keyprefHwCodecAcceleration;
-  private String keyprefCaptureToTexture;
-  private String keyprefFlexfec;
-  private String keyprefNoAudioProcessingPipeline;
-  private String keyprefAecDump;
-  private String keyprefOpenSLES;
-  private String keyprefDisableBuiltInAec;
-  private String keyprefDisableBuiltInAgc;
-  private String keyprefDisableBuiltInNs;
-  private String keyprefEnableLevelControl;
-  private String keyprefDisableWebRtcAGCAndHPF;
-  private String keyprefDisplayHud;
-  private String keyprefTracing;
-  private String keyprefRoomServerUrl;
-  private String keyprefRoom;
-  private String keyprefRoomList;
   private ArrayList<String> roomList;
   private ArrayAdapter<String> adapter;
-  private String keyprefEnableDataChannel;
-  private String keyprefOrdered;
-  private String keyprefMaxRetransmitTimeMs;
-  private String keyprefMaxRetransmits;
-  private String keyprefDataProtocol;
-  private String keyprefNegotiated;
-  private String keyprefDataId;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-
-    // Get setting keys.
-    PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
-    sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-    keyprefVideoCallEnabled = getString(R.string.pref_videocall_key);
-    keyprefScreencapture = getString(R.string.pref_screencapture_key);
-    keyprefCamera2 = getString(R.string.pref_camera2_key);
-    keyprefResolution = getString(R.string.pref_resolution_key);
-    keyprefFps = getString(R.string.pref_fps_key);
-    keyprefCaptureQualitySlider = getString(R.string.pref_capturequalityslider_key);
-    keyprefVideoBitrateType = getString(R.string.pref_maxvideobitrate_key);
-    keyprefVideoBitrateValue = getString(R.string.pref_maxvideobitratevalue_key);
-    keyprefVideoCodec = getString(R.string.pref_videocodec_key);
-    keyprefHwCodecAcceleration = getString(R.string.pref_hwcodec_key);
-    keyprefCaptureToTexture = getString(R.string.pref_capturetotexture_key);
-    keyprefFlexfec = getString(R.string.pref_flexfec_key);
-    keyprefAudioBitrateType = getString(R.string.pref_startaudiobitrate_key);
-    keyprefAudioBitrateValue = getString(R.string.pref_startaudiobitratevalue_key);
-    keyprefAudioCodec = getString(R.string.pref_audiocodec_key);
-    keyprefNoAudioProcessingPipeline = getString(R.string.pref_noaudioprocessing_key);
-    keyprefAecDump = getString(R.string.pref_aecdump_key);
-    keyprefOpenSLES = getString(R.string.pref_opensles_key);
-    keyprefDisableBuiltInAec = getString(R.string.pref_disable_built_in_aec_key);
-    keyprefDisableBuiltInAgc = getString(R.string.pref_disable_built_in_agc_key);
-    keyprefDisableBuiltInNs = getString(R.string.pref_disable_built_in_ns_key);
-    keyprefEnableLevelControl = getString(R.string.pref_enable_level_control_key);
-    keyprefDisableWebRtcAGCAndHPF = getString(R.string.pref_disable_webrtc_agc_and_hpf_key);
-    keyprefDisplayHud = getString(R.string.pref_displayhud_key);
-    keyprefTracing = getString(R.string.pref_tracing_key);
-    keyprefRoomServerUrl = getString(R.string.pref_room_server_url_key);
-    keyprefRoom = getString(R.string.pref_room_key);
-    keyprefRoomList = getString(R.string.pref_room_list_key);
-    keyprefEnableDataChannel = getString(R.string.pref_enable_datachannel_key);
-    keyprefOrdered = getString(R.string.pref_ordered_key);
-    keyprefMaxRetransmitTimeMs = getString(R.string.pref_max_retransmit_time_ms_key);
-    keyprefMaxRetransmits = getString(R.string.pref_max_retransmits_key);
-    keyprefDataProtocol = getString(R.string.pref_data_protocol_key);
-    keyprefNegotiated = getString(R.string.pref_negotiated_key);
-    keyprefDataId = getString(R.string.pref_data_id_key);
-
+    AppRTCManager.getInstance().init(this);
     setContentView(R.layout.activity_connect);
-
     roomEditText = (EditText) findViewById(R.id.room_edittext);
     roomEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
       @Override
@@ -165,7 +88,7 @@ public class ConnectActivity extends Activity {
       int runTimeMs = intent.getIntExtra(CallActivity.EXTRA_RUNTIME, 0);
       boolean useValuesFromIntent =
           intent.getBooleanExtra(CallActivity.EXTRA_USE_VALUES_FROM_INTENT, false);
-      String room = sharedPref.getString(keyprefRoom, "");
+      String room = AppRTCManager.getInstance().getRoom();
       connectToRoom(room, true, loopback, useValuesFromIntent, runTimeMs);
     }
   }
@@ -223,19 +146,22 @@ public class ConnectActivity extends Activity {
     super.onPause();
     String room = roomEditText.getText().toString();
     String roomListJson = new JSONArray(roomList).toString();
-    SharedPreferences.Editor editor = sharedPref.edit();
-    editor.putString(keyprefRoom, room);
-    editor.putString(keyprefRoomList, roomListJson);
-    editor.commit();
+
+    AppRTCManager.getInstance().putRoomAndRoomList(room,roomListJson);
+
+//    SharedPreferences.Editor editor = sharedPref.edit();
+//    editor.putString(keyprefRoom, room);
+//    editor.putString(keyprefRoomList, roomListJson);
+//    editor.commit();
   }
 
   @Override
   public void onResume() {
     super.onResume();
-    String room = sharedPref.getString(keyprefRoom, "");
+    String room = AppRTCManager.getInstance().getRoom();
     roomEditText.setText(room);
     roomList = new ArrayList<String>();
-    String roomListJson = sharedPref.getString(keyprefRoomList, null);
+    String roomListJson = AppRTCManager.getInstance().getRoomList();
     if (roomListJson != null) {
       try {
         JSONArray jsonArray = new JSONArray(roomListJson);
@@ -279,7 +205,7 @@ public class ConnectActivity extends Activity {
       return defaultValue;
     } else {
       String attributeName = getString(attributeId);
-      return sharedPref.getString(attributeName, defaultValue);
+      return AppRTCManager.getInstance().getString(attributeName, defaultValue);
     }
   }
 
@@ -294,7 +220,7 @@ public class ConnectActivity extends Activity {
       return getIntent().getBooleanExtra(intentName, defaultValue);
     } else {
       String attributeName = getString(attributeId);
-      return sharedPref.getBoolean(attributeName, defaultValue);
+      return AppRTCManager.getInstance().getBoolean(attributeName, defaultValue);
     }
   }
 
@@ -310,7 +236,7 @@ public class ConnectActivity extends Activity {
       return getIntent().getIntExtra(intentName, defaultValue);
     } else {
       String attributeName = getString(attributeId);
-      String value = sharedPref.getString(attributeName, defaultString);
+      String value = AppRTCManager.getInstance().getString(attributeName, defaultString);
       try {
         return Integer.parseInt(value);
       } catch (NumberFormatException e) {
@@ -329,8 +255,7 @@ public class ConnectActivity extends Activity {
       roomId = Integer.toString((new Random()).nextInt(100000000));
     }
 
-    String roomUrl = sharedPref.getString(
-        keyprefRoomServerUrl, getString(R.string.pref_room_server_url_default));
+    String roomUrl = AppRTCManager.getInstance().getRoomServerUrl();
 
     // Video call enabled flag.
     boolean videoCallEnabled = sharedPrefGetBoolean(R.string.pref_videocall_key,
@@ -409,8 +334,8 @@ public class ConnectActivity extends Activity {
       videoHeight = getIntent().getIntExtra(CallActivity.EXTRA_VIDEO_HEIGHT, 0);
     }
     if (videoWidth == 0 && videoHeight == 0) {
-      String resolution =
-          sharedPref.getString(keyprefResolution, getString(R.string.pref_resolution_default));
+      String resolution = AppRTCManager.getInstance().getResolution();
+
       String[] dimensions = resolution.split("[ x]+");
       if (dimensions.length == 2) {
         try {
@@ -430,16 +355,7 @@ public class ConnectActivity extends Activity {
       cameraFps = getIntent().getIntExtra(CallActivity.EXTRA_VIDEO_FPS, 0);
     }
     if (cameraFps == 0) {
-      String fps = sharedPref.getString(keyprefFps, getString(R.string.pref_fps_default));
-      String[] fpsValues = fps.split("[ x]+");
-      if (fpsValues.length == 2) {
-        try {
-          cameraFps = Integer.parseInt(fpsValues[0]);
-        } catch (NumberFormatException e) {
-          cameraFps = 0;
-          Log.e(TAG, "Wrong camera fps setting: " + fps);
-        }
-      }
+      cameraFps = AppRTCManager.getInstance().getCameraFps();
     }
 
     // Check capture quality slider flag.
@@ -453,13 +369,7 @@ public class ConnectActivity extends Activity {
       videoStartBitrate = getIntent().getIntExtra(CallActivity.EXTRA_VIDEO_BITRATE, 0);
     }
     if (videoStartBitrate == 0) {
-      String bitrateTypeDefault = getString(R.string.pref_maxvideobitrate_default);
-      String bitrateType = sharedPref.getString(keyprefVideoBitrateType, bitrateTypeDefault);
-      if (!bitrateType.equals(bitrateTypeDefault)) {
-        String bitrateValue = sharedPref.getString(
-            keyprefVideoBitrateValue, getString(R.string.pref_maxvideobitratevalue_default));
-        videoStartBitrate = Integer.parseInt(bitrateValue);
-      }
+      videoStartBitrate = AppRTCManager.getInstance().getVideoStartBitrate();
     }
 
     int audioStartBitrate = 0;
@@ -467,13 +377,7 @@ public class ConnectActivity extends Activity {
       audioStartBitrate = getIntent().getIntExtra(CallActivity.EXTRA_AUDIO_BITRATE, 0);
     }
     if (audioStartBitrate == 0) {
-      String bitrateTypeDefault = getString(R.string.pref_startaudiobitrate_default);
-      String bitrateType = sharedPref.getString(keyprefAudioBitrateType, bitrateTypeDefault);
-      if (!bitrateType.equals(bitrateTypeDefault)) {
-        String bitrateValue = sharedPref.getString(
-            keyprefAudioBitrateValue, getString(R.string.pref_startaudiobitratevalue_default));
-        audioStartBitrate = Integer.parseInt(bitrateValue);
-      }
+      audioStartBitrate = AppRTCManager.getInstance().getAudioStartBitrate();
     }
 
     // Check statistics display option.
