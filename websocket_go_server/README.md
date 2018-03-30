@@ -23,7 +23,7 @@ A websocket-based signaling server in Go.
 
 ## Running
 
-    ./collidermain -port=8089 -tls=true
+    ./bin/collidermain -port=8089 -tls=true
 
 ## Testing
 
