@@ -10,25 +10,20 @@ A websocket-based signaling server in Go.
   E.g. `export GOPATH=$HOME/goWorkspace/`
   `mkdir $GOPATH/src`
 
-2. Link the collider directories into `$GOPATH/src`
+2. Run build.sh
 
-        ln -s `pwd`/collider $GOPATH/src
-        ln -s `pwd`/collidermain $GOPATH/src
-        ln -s `pwd`/collidertest $GOPATH/src
+        build collidermain in current dir
 
-3. Install dependencies
+3. setup SSL cert file
 
-        go get collidermain
+        mkdir /cert
+        cp key.pem to /cert/
+        cp cert.pem to /cert/
 
-4. Install `collidermain`
-
-        go install collidermain
-
-5. setup SSL cert file
 
 ## Running
 
-    $GOPATH/bin/collidermain -port=8089 -tls=true
+    ./collidermain -port=8089 -tls=true
 
 ## Testing
 
