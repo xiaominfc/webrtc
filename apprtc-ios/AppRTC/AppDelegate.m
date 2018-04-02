@@ -8,7 +8,7 @@
 
 #import "AppDelegate.h"
 #import "RTCPeerConnectionFactory.h"
-
+#import <AVFoundation/AVFoundation.h>
 
 @implementation AppDelegate
 
@@ -16,6 +16,18 @@
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     
     [RTCPeerConnectionFactory initializeSSL];
+    
+    
+    [[AVAudioSession sharedInstance] requestRecordPermission:^(BOOL granted) {
+        // CALL YOUR METHOD HERE - as this assumes being called only once from user interacting with permission alert!
+        if (granted) {
+            // Microphone enabled code
+        }
+        else {
+            // Microphone disabled code
+        }
+    }];
+
 
     return YES;
 }

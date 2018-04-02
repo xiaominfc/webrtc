@@ -15,10 +15,12 @@
 		5C80AAA11AAB717100F21FFA /* ARTCRoomViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 5C80AAA01AAB717100F21FFA /* ARTCRoomViewController.m */; };
 		5C80AAA61AAB71C700F21FFA /* ARTCVideoChatViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 5C80AAA51AAB71C700F21FFA /* ARTCVideoChatViewController.m */; };
 		5C80AAAA1AAB788A00F21FFA /* ARTCRoomTextInputViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 5C80AAA91AAB788A00F21FFA /* ARTCRoomTextInputViewCell.m */; };
-		65B60C96FF584964C27562A6 /* libPods.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EDADA2C0C3A5199BC24EF352 /* libPods.a */; };
+		68D1B5AEBAA4B0B3B1746766 /* libPods-AppRTC.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D46133DE9557A5537F3EDF9 /* libPods-AppRTC.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		034C6EBF7AA680910F27BC53 /* Pods-AppRTC.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AppRTC.release.xcconfig"; path = "Pods/Target Support Files/Pods-AppRTC/Pods-AppRTC.release.xcconfig"; sourceTree = "<group>"; };
+		1D46133DE9557A5537F3EDF9 /* libPods-AppRTC.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AppRTC.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C80AA761AAB5DF300F21FFA /* AppRTC.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AppRTC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5C80AA7A1AAB5DF300F21FFA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		5C80AA7B1AAB5DF300F21FFA /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
@@ -33,9 +35,7 @@
 		5C80AAA51AAB71C700F21FFA /* ARTCVideoChatViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ARTCVideoChatViewController.m; sourceTree = "<group>"; };
 		5C80AAA81AAB788A00F21FFA /* ARTCRoomTextInputViewCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ARTCRoomTextInputViewCell.h; sourceTree = "<group>"; };
 		5C80AAA91AAB788A00F21FFA /* ARTCRoomTextInputViewCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ARTCRoomTextInputViewCell.m; sourceTree = "<group>"; };
-		A91A157833594B50E74E767F /* Pods.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Pods.debug.xcconfig; path = "Pods/Target Support Files/Pods/Pods.debug.xcconfig"; sourceTree = "<group>"; };
-		B6DABCBD6F43FEC6530D36B2 /* Pods.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Pods.release.xcconfig; path = "Pods/Target Support Files/Pods/Pods.release.xcconfig"; sourceTree = "<group>"; };
-		EDADA2C0C3A5199BC24EF352 /* libPods.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libPods.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		9512B7B84C1E6EFB5D6C0E76 /* Pods-AppRTC.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AppRTC.debug.xcconfig"; path = "Pods/Target Support Files/Pods-AppRTC/Pods-AppRTC.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -43,7 +43,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				65B60C96FF584964C27562A6 /* libPods.a in Frameworks */,
+				68D1B5AEBAA4B0B3B1746766 /* libPods-AppRTC.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,7 +53,7 @@
 		1148D91C97037D5C1CF3115B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				EDADA2C0C3A5199BC24EF352 /* libPods.a */,
+				1D46133DE9557A5537F3EDF9 /* libPods-AppRTC.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -61,8 +61,8 @@
 		4DD24E6966F906824AE26A91 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				A91A157833594B50E74E767F /* Pods.debug.xcconfig */,
-				B6DABCBD6F43FEC6530D36B2 /* Pods.release.xcconfig */,
+				9512B7B84C1E6EFB5D6C0E76 /* Pods-AppRTC.debug.xcconfig */,
+				034C6EBF7AA680910F27BC53 /* Pods-AppRTC.release.xcconfig */,
 			);
 			name = Pods;
 			sourceTree = "<group>";
@@ -144,12 +144,13 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 5C80AA991AAB5DF300F21FFA /* Build configuration list for PBXNativeTarget "AppRTC" */;
 			buildPhases = (
+				CB5CB1757B616E66CBE45775 /* [CP] Check Pods Manifest.lock */,
 				24ABD54F0D4EF6CABF005175 /* Check Pods Manifest.lock */,
 				5C80AA721AAB5DF300F21FFA /* Sources */,
 				5C80AA731AAB5DF300F21FFA /* Frameworks */,
 				5C80AA741AAB5DF300F21FFA /* Resources */,
-				50BFB4AA9193C934A869E7DE /* Copy Pods Resources */,
-				9C05033E66DB5BAA7FBF7700 /* Embed Pods Frameworks */,
+				F2411F33DE91A1B58CE025B5 /* [CP] Embed Pods Frameworks */,
+				AE3EFB6D068EDA8A57DD05BC /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -222,34 +223,52 @@
 			shellScript = "diff \"${PODS_ROOT}/../Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [[ $? != 0 ]] ; then\n    cat << EOM\nerror: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\nEOM\n    exit 1\nfi\n";
 			showEnvVarsInLog = 0;
 		};
-		50BFB4AA9193C934A869E7DE /* Copy Pods Resources */ = {
+		AE3EFB6D068EDA8A57DD05BC /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
 			);
-			name = "Copy Pods Resources";
+			name = "[CP] Copy Pods Resources";
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods/Pods-resources.sh\"\n";
+			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-AppRTC/Pods-AppRTC-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		9C05033E66DB5BAA7FBF7700 /* Embed Pods Frameworks */ = {
+		CB5CB1757B616E66CBE45775 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-AppRTC-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		F2411F33DE91A1B58CE025B5 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
 			);
-			name = "Embed Pods Frameworks";
+			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods/Pods-frameworks.sh\"\n";
+			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-AppRTC/Pods-AppRTC-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -371,7 +390,7 @@
 		};
 		5C80AA9A1AAB5DF300F21FFA /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A91A157833594B50E74E767F /* Pods.debug.xcconfig */;
+			baseConfigurationReference = 9512B7B84C1E6EFB5D6C0E76 /* Pods-AppRTC.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = X5X6ZXN55A;
@@ -381,13 +400,14 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Lib",
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.xiaominfc.ios.AppRTC;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
 		};
 		5C80AA9B1AAB5DF300F21FFA /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B6DABCBD6F43FEC6530D36B2 /* Pods.release.xcconfig */;
+			baseConfigurationReference = 034C6EBF7AA680910F27BC53 /* Pods-AppRTC.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				DEVELOPMENT_TEAM = X5X6ZXN55A;
@@ -397,6 +417,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Lib",
 				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.xiaominfc.ios.AppRTC;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

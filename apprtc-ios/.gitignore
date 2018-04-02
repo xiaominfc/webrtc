@@ -33,4 +33,7 @@ xcuserdata
 
 # Misc
 .DS_Store
-#*.lock
+*.lock
+
+
+Pods
