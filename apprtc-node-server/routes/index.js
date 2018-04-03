@@ -442,7 +442,7 @@ router.post('/message/:roomId/:clientId', function(req, res, next) {
 
 router.get('/turn', function(req, res, next) {
   console.log(req);
-  res.send({uris:'turn://vm.xiaominfc.com:8222',username:'rtc',password:'rtc'});
+  res.send({uris:'turn://xiaominfc.com:3478',username:'rtc',password:'rtc'});
 });
 
 router.get('/r/:roomId', function(req, res, next) {
