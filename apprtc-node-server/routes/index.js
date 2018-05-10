@@ -7,6 +7,9 @@ var router = express.Router();
 var Rooms = require('../lib/rooms.js');
 var rooms = new Rooms();
 
+
+const MAXUsersCount = 100;
+
 var constants = {
   LOOPBACK_CLIENT_ID: 'LOOPBACK_CLIENT_ID',
   //TURN_BASE_URL: 'https://computeengineondemand.appspot.com',
@@ -274,7 +277,7 @@ function getRoomParameters(req, roomId, clientId, isInitiator) {
   var wssPostUrl = wssParams.wssPostUrl;
   var bypassJoinConfirmation = false; //TODO: add BYPASS_JOIN_CONFIRMATION flag in environment variable
 
-  const MAXUsersCount = 100;
+  
 
   var params = {
     'error_messages': errorMessages,
