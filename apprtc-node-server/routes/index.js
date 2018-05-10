@@ -274,6 +274,8 @@ function getRoomParameters(req, roomId, clientId, isInitiator) {
   var wssPostUrl = wssParams.wssPostUrl;
   var bypassJoinConfirmation = false; //TODO: add BYPASS_JOIN_CONFIRMATION flag in environment variable
 
+  const MAXUsersCount = 100;
+
   var params = {
     'error_messages': errorMessages,
     'is_loopback' : JSON.stringify(debug == 'loopback'),
@@ -320,7 +322,7 @@ function addClientToRoom(req, roomId, clientId, isLoopback, callback) {
     var isInitiator = false;
     var error = null;
     var occupancy = room.getOccupancy();
-    if (occupancy >= 2) {
+    if (occupancy >= MAXUsersCount) {
       error = constants.RESPONSE_ROOM_FULL;
       callback(error, { is_initiator: isInitiator, messages:[]});
     } else if (room.hasClient(clientId)) {
@@ -452,7 +454,7 @@ router.get('/r/:roomId', function(req, res, next) {
     if (room) {
       console.log('Room ' + roomId + ' has state ' + room.toString());
       // Check if room is full
-      if (room.getOccupancy() >= 2) {
+      if (room.getOccupancy() >= MAXUsersCount) {
         console.log('Room ' + roomId + ' is full');
         res.render('full_template', {});
         return;
