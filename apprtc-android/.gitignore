@@ -9,5 +9,14 @@ build
 local.properties
 reports
 
+
+
+.project
+.settings/
+app/.classpath
+app/.project
+app/.settings/
+
+
 # Mac OS
 .DS_Store

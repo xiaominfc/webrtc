@@ -36,6 +36,12 @@
 		5C80AAA81AAB788A00F21FFA /* ARTCRoomTextInputViewCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ARTCRoomTextInputViewCell.h; sourceTree = "<group>"; };
 		5C80AAA91AAB788A00F21FFA /* ARTCRoomTextInputViewCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ARTCRoomTextInputViewCell.m; sourceTree = "<group>"; };
 		9512B7B84C1E6EFB5D6C0E76 /* Pods-AppRTC.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AppRTC.debug.xcconfig"; path = "Pods/Target Support Files/Pods-AppRTC/Pods-AppRTC.debug.xcconfig"; sourceTree = "<group>"; };
+		A88074772073C7E7008E2BCE /* CoreAudioKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudioKit.framework; path = System/Library/Frameworks/CoreAudioKit.framework; sourceTree = SDKROOT; };
+		A88074782073C7E8008E2BCE /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
+		A88074792073C7E8008E2BCE /* AudioUnit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioUnit.framework; path = System/Library/Frameworks/AudioUnit.framework; sourceTree = SDKROOT; };
+		A880747A2073C7E8008E2BCE /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		A880747B2073C7E8008E2BCE /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
+		A880747C2073C7E8008E2BCE /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -53,6 +59,12 @@
 		1148D91C97037D5C1CF3115B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				A88074792073C7E8008E2BCE /* AudioUnit.framework */,
+				A880747C2073C7E8008E2BCE /* AVFoundation.framework */,
+				A88074782073C7E8008E2BCE /* CoreAudio.framework */,
+				A88074772073C7E7008E2BCE /* CoreAudioKit.framework */,
+				A880747A2073C7E8008E2BCE /* CoreGraphics.framework */,
+				A880747B2073C7E8008E2BCE /* CoreVideo.framework */,
 				1D46133DE9557A5537F3EDF9 /* libPods-AppRTC.a */,
 			);
 			name = Frameworks;

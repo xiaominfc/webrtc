@@ -4,8 +4,13 @@
 支持自建webrtc服务整合到自己的即时通讯系统里
 
 ### 安装turnserver
-turnserver可以手动安装 然后修改apprtc-node-server 下routes/index.js
 
+(https://github.com/coturn/coturn/wiki/CoturnConfig)[https://github.com/coturn/coturn/wiki/CoturnConfig]
+or
+(https://github.com/pion/turn)[https://github.com/pion/turn]
+
+
+turnserver可以手动安装 然后修改apprtc-node-server 下routes/index.js
 
 ~~~~
 router.get('/turn', function(req, res, next) {
@@ -65,6 +70,7 @@ yum install nodejs
 # start server
 cd ../apprtc-node-server
 ## config 
+npm install
 node ./bin/www
 
 # config supervisor for demon server (配置 supervisor 守护改服务)

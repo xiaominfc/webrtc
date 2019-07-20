@@ -29,3 +29,13 @@ node ./bin/www
 ```
 
 Navigate to `http://localhost:3000` to run the WebRTC Demo
+
+
+### rebuild apprtc.debug.js
+
+```
+npm run build
+#or
+./node_modules/grunt/bin/grunt build
+
+```

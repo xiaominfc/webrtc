@@ -1,160 +1,35 @@
-var RTCPeerConnection = null;
-var getUserMedia = null;
-var attachMediaStream = null;
-var reattachMediaStream = null;
-var webrtcDetectedBrowser = null;
-var webrtcDetectedVersion = null;
-function trace(text) {
-  if (text[text.length - 1] === "\n") {
-    text = text.substring(0, text.length - 1);
+var Analytics = function(roomServer) {
+  this.analyticsPath_ = roomServer + "/a/";
+};
+Analytics.EventObject_ = {};
+Analytics.prototype.reportEvent = function(eventType, roomId, flowId) {
+  var eventObj = {};
+  eventObj[enums.RequestField.EventField.EVENT_TYPE] = eventType;
+  eventObj[enums.RequestField.EventField.EVENT_TIME_MS] = Date.now();
+  if (roomId) {
+    eventObj[enums.RequestField.EventField.ROOM_ID] = roomId;
   }
-  if (window.performance) {
-    var now = (window.performance.now() / 1E3).toFixed(3);
-    console.log(now + ": " + text);
-  } else {
-    console.log(text);
+  if (flowId) {
+    eventObj[enums.RequestField.EventField.FLOW_ID] = flowId;
   }
-}
-if (navigator.mozGetUserMedia) {
-  console.log("This appears to be Firefox");
-  webrtcDetectedBrowser = "firefox";
-  webrtcDetectedVersion = parseInt(navigator.userAgent.match(/Firefox\/([0-9]+)\./)[1], 10);
-  RTCPeerConnection = function(pcConfig, pcConstraints) {
-    if (pcConfig && pcConfig.iceServers) {
-      for (var i = 0;i < pcConfig.iceServers.length;i++) {
-        if (pcConfig.iceServers[i].hasOwnProperty("urls")) {
-          pcConfig.iceServers[i].url = pcConfig.iceServers[i].urls;
-          delete pcConfig.iceServers[i].urls;
-        }
-      }
-    }
-    return new mozRTCPeerConnection(pcConfig, pcConstraints);
-  };
-  window.RTCSessionDescription = mozRTCSessionDescription;
-  window.RTCIceCandidate = mozRTCIceCandidate;
-  if(navigator.mediaDevices.getUserMedia) {
-    getUserMedia = navigator.mediaDevices.getUserMedia;  
-  }else {
-    getUserMedia = navigator.mozGetUserMedia.bind(navigator);
-  }
-  
-  navigator.getUserMedia = getUserMedia;
-  MediaStreamTrack.getSources = function(successCb) {
-    setTimeout(function() {
-      var infos = [{kind:"audio", id:"default", label:"", facing:""}, {kind:"video", id:"default", label:"", facing:""}];
-      successCb(infos);
-    }, 0);
-  };
-  window.createIceServer = function(url, username, password) {
-    var iceServer = null;
-    var urlParts = url.split(":");
-    if (urlParts[0].indexOf("stun") === 0) {
-      iceServer = {"url":url};
-    } else {
-      if (urlParts[0].indexOf("turn") === 0) {
-        if (webrtcDetectedVersion < 27) {
-          var turnUrlParts = url.split("?");
-          if (turnUrlParts.length === 1 || turnUrlParts[1].indexOf("transport=udp") === 0) {
-            iceServer = {"url":turnUrlParts[0], "credential":password, "username":username};
-          }
-        } else {
-          iceServer = {"url":url, "credential":password, "username":username};
-        }
-      }
-    }
-    return iceServer;
-  };
-  window.createIceServers = function(urls, username, password) {
-    var iceServers = [];
-    for (var i = 0;i < urls.length;i++) {
-      var iceServer = window.createIceServer(urls[i], username, password);
-      if (iceServer !== null) {
-        iceServers.push(iceServer);
-      }
-    }
-    return iceServers;
-  };
-  attachMediaStream = function(element, stream) {
-    console.log("Attaching media stream");
-    element.mozSrcObject = stream;
-  };
-  reattachMediaStream = function(to, from) {
-    console.log("Reattaching media stream");
-    to.mozSrcObject = from.mozSrcObject;
-  };
-} else {
-  if (navigator.webkitGetUserMedia) {
-    console.log("This appears to be Chrome");
-    webrtcDetectedBrowser = "chrome";
-    var result = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
-    if (result !== null) {
-      webrtcDetectedVersion = parseInt(result[2], 10);
-    } else {
-      webrtcDetectedVersion = 999;
-    }
-    window.createIceServer = function(url, username, password) {
-      var iceServer = null;
-      var urlParts = url.split(":");
-      if (urlParts[0].indexOf("stun") === 0) {
-        iceServer = {"url":url};
-      } else {
-        if (urlParts[0].indexOf("turn") === 0) {
-          iceServer = {"url":url, "credential":password, "username":username};
-        }
-      }
-      return iceServer;
-    };
-    window.createIceServers = function(urls, username, password) {
-      return{"urls":urls, "credential":password, "username":username};
-    };
-    RTCPeerConnection = function(pcConfig, pcConstraints) {
-      return new webkitRTCPeerConnection(pcConfig, pcConstraints);
-    };
-    getUserMedia = navigator.webkitGetUserMedia.bind(navigator);
-    navigator.getUserMedia = getUserMedia;
-    attachMediaStream = function(element, stream) {
-      if (typeof element.srcObject !== "undefined") {
-        element.srcObject = stream;
-      } else {
-        if (typeof element.mozSrcObject !== "undefined") {
-          element.mozSrcObject = stream;
-        } else {
-          if (typeof element.src !== "undefined") {
-            element.src = URL.createObjectURL(stream);
-          } else {
-            console.log("Error attaching stream to element.");
-          }
-        }
-      }
-    };
-    reattachMediaStream = function(to, from) {
-      to.src = from.src;
-    };
-  } else {
-    console.log("Browser does not appear to be WebRTC-capable");
-  }
-}
-function requestUserMedia(constraints) {
-  return new Promise(function(resolve, reject) {
-    var onSuccess = function(stream) {
-      resolve(stream);
-    };
-    var onError = function(error) {
-      reject(error);
-    };
-    try {
-      getUserMedia(constraints, onSuccess, onError);
-    } catch (e) {
-      reject(e);
-    }
-  });
-}
-;var remoteVideo = $("#remote-video");
-var UI_CONSTANTS = {confirmJoinButton:"#confirm-join-button", confirmJoinDiv:"#confirm-join-div", confirmJoinRoomSpan:"#confirm-join-room-span", fullscreenSvg:"#fullscreen", hangupSvg:"#hangup", icons:"#icons", infoDiv:"#info-div", localVideo:"#local-video", miniVideo:"#mini-video", muteAudioSvg:"#mute-audio", muteVideoSvg:"#mute-video", newRoomButton:"#new-room-button", newRoomLink:"#new-room-link", remoteVideo:"#remote-video", rejoinButton:"#rejoin-button", rejoinDiv:"#rejoin-div", rejoinLink:"#rejoin-link",
-  roomLinkHref:"#room-link-href", roomSelectionDiv:"#room-selection", roomSelectionInput:"#room-id-input", roomSelectionInputLabel:"#room-id-input-label", roomSelectionJoinButton:"#join-button", roomSelectionRandomButton:"#random-button", roomSelectionRecentList:"#recent-rooms-list", sharingDiv:"#sharing-div", statusDiv:"#status-div", videosDiv:"#videos"};
+  this.sendEventRequest_(eventObj);
+};
+Analytics.prototype.sendEventRequest_ = function(eventObj) {
+  var request = {};
+  request[enums.RequestField.TYPE] = enums.RequestField.MessageType.EVENT;
+  request[enums.RequestField.REQUEST_TIME_MS] = Date.now();
+  request[enums.RequestField.EVENT] = eventObj;
+  sendAsyncUrlRequest("POST", this.analyticsPath_, JSON.stringify(request)).then(function() {
+  }.bind(this), function(error) {
+    trace("Failed to send event request: " + error.message);
+  }.bind(this));
+};
+var remoteVideo = $("#remote-video");
+var UI_CONSTANTS = {confirmJoinButton:"#confirm-join-button", confirmJoinDiv:"#confirm-join-div", confirmJoinRoomSpan:"#confirm-join-room-span", fullscreenSvg:"#fullscreen", hangupSvg:"#hangup", icons:"#icons", infoDiv:"#info-div", localVideo:"#local-video", miniVideo:"#mini-video", muteAudioSvg:"#mute-audio", muteVideoSvg:"#mute-video", newRoomButton:"#new-room-button", newRoomLink:"#new-room-link", privacyLinks:"#privacy", remoteVideo:"#remote-video", rejoinButton:"#rejoin-button", rejoinDiv:"#rejoin-div", 
+rejoinLink:"#rejoin-link", roomLinkHref:"#room-link-href", roomSelectionDiv:"#room-selection", roomSelectionInput:"#room-id-input", roomSelectionInputLabel:"#room-id-input-label", roomSelectionJoinButton:"#join-button", roomSelectionRandomButton:"#random-button", roomSelectionRecentList:"#recent-rooms-list", sharingDiv:"#sharing-div", statusDiv:"#status-div", videosDiv:"#videos"};
 var AppController = function(loadingParams) {
-  console.log("Initializing; server= " + loadingParams.roomServer + ".");
-  console.log("Initializing; room=" + loadingParams.roomId + ".");
+  trace("Initializing; server= " + loadingParams.roomServer + ".");
+  trace("Initializing; room=" + loadingParams.roomId + ".");
   this.hangupSvg_ = $(UI_CONSTANTS.hangupSvg);
   this.icons_ = $(UI_CONSTANTS.icons);
   this.localVideo_ = $(UI_CONSTANTS.localVideo);
@@ -210,18 +85,27 @@ var AppController = function(loadingParams) {
       this.showRoomSelection_();
     }
   }.bind(this)).catch(function(error) {
-    console.log("Error initializing: " + error.message);
+    trace("Error initializing: " + error.message);
   }.bind(this));
 };
 AppController.prototype.createCall_ = function() {
+  var privacyLinks = $(UI_CONSTANTS.privacyLinks);
+  this.hide_(privacyLinks);
   this.call_ = new Call(this.loadingParams_);
-  this.infoBox_ = new InfoBox($(UI_CONSTANTS.infoDiv), this.remoteVideo_, this.call_, this.loadingParams_.versionInfo);
+  this.infoBox_ = new InfoBox($(UI_CONSTANTS.infoDiv), this.call_, this.loadingParams_.versionInfo);
   var roomErrors = this.loadingParams_.errorMessages;
+  var roomWarnings = this.loadingParams_.warningMessages;
   if (roomErrors && roomErrors.length > 0) {
-    for (var i = 0;i < roomErrors.length;++i) {
+    for (var i = 0; i < roomErrors.length; ++i) {
       this.infoBox_.pushErrorMessage(roomErrors[i]);
     }
     return;
+  } else {
+    if (roomWarnings && roomWarnings.length > 0) {
+      for (var j = 0; j < roomWarnings.length; ++j) {
+        this.infoBox_.pushWarningMessage(roomWarnings[j]);
+      }
+    }
   }
   this.call_.onremotehangup = this.onRemoteHangup_.bind(this);
   this.call_.onremotesdpset = this.onRemoteSdpSet_.bind(this);
@@ -242,14 +126,15 @@ AppController.prototype.showRoomSelection_ = function() {
     this.hide_(roomSelectionDiv);
     this.createCall_();
     this.finishCallSetup_(roomName);
+    this.roomSelection_.removeEventListeners();
     this.roomSelection_ = null;
     if (this.localStream_) {
       this.attachLocalStream_();
     }
   }.bind(this);
 };
-AppController.prototype.finishCallSetup_ = function(roomId) {
-  this.call_.start(roomId);
+AppController.prototype.setupUi_ = function() {
+  this.iconEventSetup_();
   document.onkeypress = this.onKeyPress_.bind(this);
   window.onmousemove = this.showIcons_.bind(this);
   $(UI_CONSTANTS.muteAudioSvg).onclick = this.toggleAudioMute_.bind(this);
@@ -257,13 +142,17 @@ AppController.prototype.finishCallSetup_ = function(roomId) {
   $(UI_CONSTANTS.fullscreenSvg).onclick = this.toggleFullScreen_.bind(this);
   $(UI_CONSTANTS.hangupSvg).onclick = this.hangup_.bind(this);
   setUpFullScreen();
+};
+AppController.prototype.finishCallSetup_ = function(roomId) {
+  this.call_.start(roomId);
+  this.setupUi_();
   if (!isChromeApp()) {
     window.onbeforeunload = function() {
       this.call_.hangup(false);
     }.bind(this);
     window.onpopstate = function(event) {
       if (!event.state) {
-        console.log("Reloading main page.");
+        trace("Reloading main page.");
         location.href = location.origin;
       } else {
         if (event.state.roomLink) {
@@ -274,11 +163,13 @@ AppController.prototype.finishCallSetup_ = function(roomId) {
   }
 };
 AppController.prototype.hangup_ = function() {
-  console.log("Hanging up.");
+  trace("Hanging up.");
   this.hide_(this.icons_);
   this.displayStatus_("Hanging up");
   this.transitionToDone_();
   this.call_.hangup(true);
+  document.onkeypress = null;
+  window.onmousemove = null;
 };
 AppController.prototype.onRemoteHangup_ = function() {
   this.displayStatus_("The remote side hung up.");
@@ -287,16 +178,16 @@ AppController.prototype.onRemoteHangup_ = function() {
 };
 AppController.prototype.onRemoteSdpSet_ = function(hasRemoteVideo) {
   if (hasRemoteVideo) {
-    console.log("Waiting for remote video.");
+    trace("Waiting for remote video.");
     this.waitForRemoteVideo_();
   } else {
-    console.log("No remote video stream; not waiting for media to arrive.");
+    trace("No remote video stream; not waiting for media to arrive.");
     this.transitionToActive_();
   }
 };
 AppController.prototype.waitForRemoteVideo_ = function() {
   if (this.remoteVideo_.readyState >= 2) {
-    console.log("Remote video started; currentTime: " + this.remoteVideo_.currentTime);
+    trace("Remote video started; currentTime: " + this.remoteVideo_.currentTime);
     this.transitionToActive_();
   } else {
     this.remoteVideo_.oncanplay = this.waitForRemoteVideo_.bind(this);
@@ -304,39 +195,47 @@ AppController.prototype.waitForRemoteVideo_ = function() {
 };
 AppController.prototype.onRemoteStreamAdded_ = function(stream) {
   this.deactivate_(this.sharingDiv_);
-  console.log("Remote stream added.");
-  attachMediaStream(this.remoteVideo_, stream);
+  trace("Remote stream added.");
+  this.remoteVideo_.srcObject = stream;
+  this.infoBox_.getRemoteTrackIds(stream);
   if (this.remoteVideoResetTimer_) {
     clearTimeout(this.remoteVideoResetTimer_);
     this.remoteVideoResetTimer_ = null;
   }
 };
 AppController.prototype.onLocalStreamAdded_ = function(stream) {
-  console.log("User has granted access to local media.");
+  trace("User has granted access to local media.");
   this.localStream_ = stream;
+  this.infoBox_.getLocalTrackIds(this.localStream_);
   if (!this.roomSelection_) {
     this.attachLocalStream_();
   }
 };
 AppController.prototype.attachLocalStream_ = function() {
-  attachMediaStream(this.localVideo_, this.localStream_);
+  trace("Attaching local stream.");
+  this.localVideo_.srcObject = this.localStream_;
   this.displayStatus_("");
   this.activate_(this.localVideo_);
   this.show_(this.icons_);
+  if (this.localStream_.getVideoTracks().length === 0) {
+    this.hide_($(UI_CONSTANTS.muteVideoSvg));
+  }
+  if (this.localStream_.getAudioTracks().length === 0) {
+    this.hide_($(UI_CONSTANTS.muteAudioSvg));
+  }
 };
 AppController.prototype.transitionToActive_ = function() {
   this.remoteVideo_.oncanplay = undefined;
   var connectTime = window.performance.now();
   this.infoBox_.setSetupTimes(this.call_.startTime, connectTime);
   this.infoBox_.updateInfoDiv();
-  console.log("Call setup time: " + (connectTime - this.call_.startTime).toFixed(0) + "ms.");
-  console.log("reattachMediaStream: " + this.localVideo_.src);
-  //reattachMediaStream(this.miniVideo_, this.localVideo_);
+  trace("Call setup time: " + (connectTime - this.call_.startTime).toFixed(0) + "ms.");
+  trace("reattachMediaStream: " + this.localVideo_.srcObject);
   this.miniVideo_.srcObject = this.localVideo_.srcObject;
   this.activate_(this.remoteVideo_);
   this.activate_(this.miniVideo_);
-  //this.deactivate_(this.localVideo_);
-  this.localVideo_.src = "";
+  this.deactivate_(this.localVideo_);
+  this.localVideo_.srcObject = null;
   this.activate_(this.videosDiv_);
   this.show_(this.hangupSvg_);
   this.displayStatus_("");
@@ -348,11 +247,11 @@ AppController.prototype.transitionToWaiting_ = function() {
   if (!this.remoteVideoResetTimer_) {
     this.remoteVideoResetTimer_ = setTimeout(function() {
       this.remoteVideoResetTimer_ = null;
-      console.log("Resetting remoteVideo src after transitioning to waiting.");
-      this.remoteVideo_.src = "";
+      trace("Resetting remoteVideo src after transitioning to waiting.");
+      this.remoteVideo_.srcObject = null;
     }.bind(this), 800);
   }
-  this.localVideo_.src = this.miniVideo_.src;
+  this.localVideo_.srcObject = this.miniVideo_.srcObject;
   this.activate_(this.localVideo_);
   this.deactivate_(this.remoteVideo_);
   this.deactivate_(this.miniVideo_);
@@ -371,6 +270,7 @@ AppController.prototype.onRejoinClick_ = function() {
   this.deactivate_(this.rejoinDiv_);
   this.hide_(this.rejoinDiv_);
   this.call_.restart();
+  this.setupUi_();
 };
 AppController.prototype.onNewRoomClick_ = function() {
   this.deactivate_(this.rejoinDiv_);
@@ -380,15 +280,16 @@ AppController.prototype.onNewRoomClick_ = function() {
 AppController.prototype.onKeyPress_ = function(event) {
   switch(String.fromCharCode(event.charCode)) {
     case " ":
-      ;
     case "m":
       if (this.call_) {
         this.call_.toggleAudioMute();
+        this.muteAudioIconSet_.toggle();
       }
       return false;
     case "c":
       if (this.call_) {
         this.call_.toggleVideoMute();
+        this.muteVideoIconSet_.toggle();
       }
       return false;
     case "f":
@@ -400,13 +301,16 @@ AppController.prototype.onKeyPress_ = function(event) {
     case "q":
       this.hangup_();
       return false;
+    case "l":
+      this.toggleMiniVideo_();
+      return false;
     default:
       return;
   }
 };
 AppController.prototype.pushCallNavigation_ = function(roomId, roomLink) {
   if (!isChromeApp()) {
-    //window.history.pushState({"roomId":roomId, "roomLink":roomLink}, roomId, roomLink);
+    window.history.pushState({"roomId":roomId, "roomLink":roomLink}, roomId, roomLink);
   }
 };
 AppController.prototype.displaySharingInfo_ = function(roomId, roomLink) {
@@ -425,7 +329,7 @@ AppController.prototype.displayStatus_ = function(status) {
   this.statusDiv_.innerHTML = status;
 };
 AppController.prototype.displayError_ = function(error) {
-  console.log(error);
+  trace(error);
   this.infoBox_.pushErrorMessage(error);
 };
 AppController.prototype.toggleAudioMute_ = function() {
@@ -438,13 +342,22 @@ AppController.prototype.toggleVideoMute_ = function() {
 };
 AppController.prototype.toggleFullScreen_ = function() {
   if (isFullScreen()) {
-    console.log("Exiting fullscreen.");
+    trace("Exiting fullscreen.");
+    document.querySelector("svg#fullscreen title").textContent = "Enter fullscreen";
     document.cancelFullScreen();
   } else {
-    console.log("Entering fullscreen.");
+    trace("Entering fullscreen.");
+    document.querySelector("svg#fullscreen title").textContent = "Exit fullscreen";
     document.body.requestFullScreen();
   }
   this.fullscreenIconSet_.toggle();
+};
+AppController.prototype.toggleMiniVideo_ = function() {
+  if (this.miniVideo_.classList.contains("active")) {
+    this.deactivate_(this.miniVideo_);
+  } else {
+    this.activate_(this.miniVideo_);
+  }
 };
 AppController.prototype.hide_ = function(element) {
   element.classList.add("hidden");
@@ -461,12 +374,32 @@ AppController.prototype.deactivate_ = function(element) {
 AppController.prototype.showIcons_ = function() {
   if (!this.icons_.classList.contains("active")) {
     this.activate_(this.icons_);
-    setTimeout(function() {
-      this.deactivate_(this.icons_);
-    }.bind(this), 5E3);
+    this.setIconTimeout_();
   }
 };
+AppController.prototype.hideIcons_ = function() {
+  if (this.icons_.classList.contains("active")) {
+    this.deactivate_(this.icons_);
+  }
+};
+AppController.prototype.setIconTimeout_ = function() {
+  if (this.hideIconsAfterTimeout) {
+    window.clearTimeout.bind(this, this.hideIconsAfterTimeout);
+  }
+  this.hideIconsAfterTimeout = window.setTimeout(function() {
+    this.hideIcons_();
+  }.bind(this), 5000);
+};
+AppController.prototype.iconEventSetup_ = function() {
+  this.icons_.onmouseenter = function() {
+    window.clearTimeout(this.hideIconsAfterTimeout);
+  }.bind(this);
+  this.icons_.onmouseleave = function() {
+    this.setIconTimeout_();
+  }.bind(this);
+};
 AppController.prototype.loadUrlParams_ = function() {
+  var DEFAULT_VIDEO_CODEC = "VP9";
   var urlParams = queryStringToDictionary(window.location.search);
   this.loadingParams_.audioSendBitrate = urlParams["asbr"];
   this.loadingParams_.audioSendCodec = urlParams["asc"];
@@ -474,12 +407,14 @@ AppController.prototype.loadUrlParams_ = function() {
   this.loadingParams_.audioRecvCodec = urlParams["arc"];
   this.loadingParams_.opusMaxPbr = urlParams["opusmaxpbr"];
   this.loadingParams_.opusFec = urlParams["opusfec"];
+  this.loadingParams_.opusDtx = urlParams["opusdtx"];
   this.loadingParams_.opusStereo = urlParams["stereo"];
   this.loadingParams_.videoSendBitrate = urlParams["vsbr"];
   this.loadingParams_.videoSendInitialBitrate = urlParams["vsibr"];
   this.loadingParams_.videoSendCodec = urlParams["vsc"];
   this.loadingParams_.videoRecvBitrate = urlParams["vrbr"];
-  this.loadingParams_.videoRecvCodec = urlParams["vrc"];
+  this.loadingParams_.videoRecvCodec = urlParams["vrc"] || DEFAULT_VIDEO_CODEC;
+  this.loadingParams_.videoFec = urlParams["videofec"];
 };
 AppController.IconSet_ = function(iconSelector) {
   this.iconElement = document.querySelector(iconSelector);
@@ -498,6 +433,7 @@ var Call = function(params) {
   this.channel_.onmessage = this.onRecvSignalingChannelMessage_.bind(this);
   this.pcClient_ = null;
   this.localStream_ = null;
+  this.errorMessageQueue_ = [];
   this.startTime = null;
   this.oncallerstarted = null;
   this.onerror = null;
@@ -510,12 +446,12 @@ var Call = function(params) {
   this.onsignalingstatechange = null;
   this.onstatusmessage = null;
   this.getMediaPromise_ = null;
-  this.getTurnServersPromise_ = null;
-  this.requestMediaAndTurnServers_();
+  this.getIceServersPromise_ = null;
+  this.requestMediaAndIceServers_();
 };
-Call.prototype.requestMediaAndTurnServers_ = function() {
+Call.prototype.requestMediaAndIceServers_ = function() {
   this.getMediaPromise_ = this.maybeGetMedia_();
-  this.getTurnServersPromise_ = this.maybeGetTurnServers_();
+  this.getIceServersPromise_ = this.maybeGetIceServers_();
 };
 Call.prototype.isInitiator = function() {
   return this.params_.isInitiator;
@@ -535,7 +471,7 @@ Call.prototype.clearCleanupQueue_ = function() {
   apprtc.windowPort.sendMessage({action:Constants.QUEUECLEAR_ACTION});
 };
 Call.prototype.restart = function() {
-  this.requestMediaAndTurnServers_();
+  this.requestMediaAndIceServers_();
   this.start(this.params_.previousRoomId);
 };
 Call.prototype.hangup = function(async) {
@@ -544,7 +480,13 @@ Call.prototype.hangup = function(async) {
     this.clearCleanupQueue_();
   }
   if (this.localStream_) {
-    this.localStream_.stop();
+    if (typeof this.localStream_.getTracks === "undefined") {
+      this.localStream_.stop();
+    } else {
+      this.localStream_.getTracks().forEach(function(track) {
+        track.stop();
+      });
+    }
     this.localStream_ = null;
   }
   if (!this.params_.roomId) {
@@ -572,31 +514,30 @@ Call.prototype.hangup = function(async) {
   }.bind(this), errorString:"Error setting params:"});
   if (async) {
     var errorHandler = function(errorString, error) {
-      console.log(errorString + " " + error.message);
+      trace(errorString + " " + error.message);
     };
     var promise = Promise.resolve();
-    for (var i = 0;i < steps.length;++i) {
+    for (var i = 0; i < steps.length; ++i) {
       promise = promise.then(steps[i].step).catch(errorHandler.bind(this, steps[i].errorString));
     }
     return promise;
-  } else {
-    var executeStep = function(executor, errorString) {
-      try {
-        executor();
-      } catch (ex) {
-        console.log(errorString + " " + ex);
-      }
-    };
-    for (var j = 0;j < steps.length;++j) {
-      executeStep(steps[j].step, steps[j].errorString);
-    }
-    if (this.params_.roomId !== null || this.params_.clientId !== null) {
-      console.log("ERROR: sync cleanup tasks did not complete successfully.");
-    } else {
-      console.log("Cleanup completed.");
-    }
-    return Promise.resolve();
   }
+  var executeStep = function(executor, errorString) {
+    try {
+      executor();
+    } catch (ex) {
+      trace(errorString + " " + ex);
+    }
+  };
+  for (var j = 0; j < steps.length; ++j) {
+    executeStep(steps[j].step, steps[j].errorString);
+  }
+  if (this.params_.roomId !== null || this.params_.clientId !== null) {
+    trace("ERROR: sync cleanup tasks did not complete successfully.");
+  } else {
+    trace("Cleanup completed.");
+  }
+  return Promise.resolve();
 };
 Call.prototype.getLeaveUrl_ = function() {
   return this.roomServer_ + "/leave/" + this.params_.roomId + "/" + this.params_.clientId;
@@ -625,26 +566,26 @@ Call.prototype.getPeerConnectionStats = function(callback) {
 Call.prototype.toggleVideoMute = function() {
   var videoTracks = this.localStream_.getVideoTracks();
   if (videoTracks.length === 0) {
-    console.log("No local video available.");
+    trace("No local video available.");
     return;
   }
-  console.log("Toggling video mute state.");
-  for (var i = 0;i < videoTracks.length;++i) {
+  trace("Toggling video mute state.");
+  for (var i = 0; i < videoTracks.length; ++i) {
     videoTracks[i].enabled = !videoTracks[i].enabled;
   }
-  console.log("Video " + (videoTracks[0].enabled ? "unmuted." : "muted."));
+  trace("Video " + (videoTracks[0].enabled ? "unmuted." : "muted."));
 };
 Call.prototype.toggleAudioMute = function() {
   var audioTracks = this.localStream_.getAudioTracks();
   if (audioTracks.length === 0) {
-    console.log("No local audio available.");
+    trace("No local audio available.");
     return;
   }
-  console.log("Toggling audio mute state.");
-  for (var i = 0;i < audioTracks.length;++i) {
+  trace("Toggling audio mute state.");
+  for (var i = 0; i < audioTracks.length; ++i) {
     audioTracks[i].enabled = !audioTracks[i].enabled;
   }
-  console.log("Audio " + (audioTracks[0].enabled ? "unmuted." : "muted."));
+  trace("Audio " + (audioTracks[0].enabled ? "unmuted." : "muted."));
 };
 Call.prototype.connectToRoom_ = function(roomId) {
   this.params_.roomId = roomId;
@@ -664,7 +605,7 @@ Call.prototype.connectToRoom_ = function(roomId) {
   }.bind(this));
   Promise.all([channelPromise, joinPromise]).then(function() {
     this.channel_.register(this.params_.roomId, this.params_.clientId);
-    Promise.all([this.getTurnServersPromise_, this.getMediaPromise_]).then(function() {
+    Promise.all([this.getIceServersPromise_, this.getMediaPromise_]).then(function() {
       this.startSignaling_();
       if (isChromeApp()) {
         this.queueCleanupMessages_();
@@ -681,8 +622,22 @@ Call.prototype.maybeGetMedia_ = function() {
   var mediaPromise = null;
   if (needStream) {
     var mediaConstraints = this.params_.mediaConstraints;
-    mediaPromise = requestUserMedia(mediaConstraints).then(function(stream) {
-      console.log("Got access to local media with mediaConstraints:\n" + "  '" + JSON.stringify(mediaConstraints) + "'");
+    mediaPromise = navigator.mediaDevices.getUserMedia(mediaConstraints).catch(function(error) {
+      if (error.name !== "NotFoundError") {
+        throw error;
+      }
+      return navigator.mediaDevices.enumerateDevices().then(function(devices) {
+        var cam = devices.find(function(device) {
+          return device.kind === "videoinput";
+        });
+        var mic = devices.find(function(device) {
+          return device.kind === "audioinput";
+        });
+        var constraints = {video:cam && mediaConstraints.video, audio:mic && mediaConstraints.audio};
+        return navigator.mediaDevices.getUserMedia(constraints);
+      });
+    }).then(function(stream) {
+      trace("Got access to local media with mediaConstraints:\n" + "  '" + JSON.stringify(mediaConstraints) + "'");
       this.onUserMediaSuccess_(stream);
     }.bind(this)).catch(function(error) {
       this.onError_("Error getting user media: " + error.message);
@@ -693,25 +648,25 @@ Call.prototype.maybeGetMedia_ = function() {
   }
   return mediaPromise;
 };
-Call.prototype.maybeGetTurnServers_ = function() {
-  var shouldRequestTurnServers = this.params_.turnRequestUrl && this.params_.turnRequestUrl.length > 0;
-  var turnPromise = null;
-  if (shouldRequestTurnServers) {
-    var requestUrl = this.params_.turnRequestUrl;
-    turnPromise = requestTurnServers(requestUrl, this.params_.turnTransports).then(function(turnServers) {
-      var iceServers = this.params_.peerConnectionConfig.iceServers;
-      this.params_.peerConnectionConfig.iceServers = iceServers.concat(turnServers);
+Call.prototype.maybeGetIceServers_ = function() {
+  var shouldRequestIceServers = this.params_.iceServerRequestUrl && this.params_.iceServerRequestUrl.length > 0 && this.params_.peerConnectionConfig.iceServers && this.params_.peerConnectionConfig.iceServers.length === 0;
+  var iceServerPromise = null;
+  if (shouldRequestIceServers) {
+    var requestUrl = this.params_.iceServerRequestUrl;
+    iceServerPromise = requestIceServers(requestUrl, this.params_.iceServerTransports).then(function(iceServers) {
+      var servers = this.params_.peerConnectionConfig.iceServers;
+      this.params_.peerConnectionConfig.iceServers = servers.concat(iceServers);
     }.bind(this)).catch(function(error) {
       if (this.onstatusmessage) {
-        var subject = encodeURIComponent("AppRTC demo TURN server not working");
+        var subject = encodeURIComponent("AppRTC demo ICE servers not working");
         this.onstatusmessage("No TURN server; unlikely that media will traverse networks. " + "If this persists please " + '<a href="mailto:discuss-webrtc@googlegroups.com?' + "subject=" + subject + '">' + "report it to discuss-webrtc@googlegroups.com</a>.");
       }
-      console.log(error.message);
+      trace(error.message);
     }.bind(this));
   } else {
-    turnPromise = Promise.resolve();
+    iceServerPromise = Promise.resolve();
   }
-  return turnPromise;
+  return iceServerPromise;
 };
 Call.prototype.onUserMediaSuccess_ = function(stream) {
   this.localStream_ = stream;
@@ -722,45 +677,64 @@ Call.prototype.onUserMediaSuccess_ = function(stream) {
 Call.prototype.onUserMediaError_ = function(error) {
   var errorMessage = "Failed to get access to local media. Error name was " + error.name + ". Continuing without sending a stream.";
   this.onError_("getUserMedia error: " + errorMessage);
+  this.errorMessageQueue_.push(error);
   alert(errorMessage);
 };
-Call.prototype.maybeCreatePcClient_ = function() {
-  if (this.pcClient_) {
-    return;
-  }
-  try {
-    this.pcClient_ = new PeerConnectionClient(this.params_, this.startTime);
-    this.pcClient_.onsignalingmessage = this.sendSignalingMessage_.bind(this);
-    this.pcClient_.onremotehangup = this.onremotehangup;
-    this.pcClient_.onremotesdpset = this.onremotesdpset;
-    this.pcClient_.onremotestreamadded = this.onremotestreamadded;
-    this.pcClient_.onsignalingstatechange = this.onsignalingstatechange;
-    this.pcClient_.oniceconnectionstatechange = this.oniceconnectionstatechange;
-    this.pcClient_.onnewicecandidate = this.onnewicecandidate;
-    this.pcClient_.onerror = this.onerror;
-    console.log("Created PeerConnectionClient");
-  } catch (e) {
-    this.onError_("Create PeerConnection exception: " + e.message);
-    alert("Cannot create RTCPeerConnection; " + "WebRTC is not supported by this browser.");
-    return;
-  }
+Call.prototype.maybeCreatePcClientAsync_ = function() {
+  return new Promise(function(resolve, reject) {
+    if (this.pcClient_) {
+      resolve();
+      return;
+    }
+    if (typeof RTCPeerConnection.generateCertificate === "function") {
+      var certParams = {name:"ECDSA", namedCurve:"P-256"};
+      RTCPeerConnection.generateCertificate(certParams).then(function(cert) {
+        trace("ECDSA certificate generated successfully.");
+        this.params_.peerConnectionConfig.certificates = [cert];
+        this.createPcClient_();
+        resolve();
+      }.bind(this)).catch(function(error) {
+        trace("ECDSA certificate generation failed.");
+        reject(error);
+      });
+    } else {
+      this.createPcClient_();
+      resolve();
+    }
+  }.bind(this));
+};
+Call.prototype.createPcClient_ = function() {
+  this.pcClient_ = new PeerConnectionClient(this.params_, this.startTime);
+  this.pcClient_.onsignalingmessage = this.sendSignalingMessage_.bind(this);
+  this.pcClient_.onremotehangup = this.onremotehangup;
+  this.pcClient_.onremotesdpset = this.onremotesdpset;
+  this.pcClient_.onremotestreamadded = this.onremotestreamadded;
+  this.pcClient_.onsignalingstatechange = this.onsignalingstatechange;
+  this.pcClient_.oniceconnectionstatechange = this.oniceconnectionstatechange;
+  this.pcClient_.onnewicecandidate = this.onnewicecandidate;
+  this.pcClient_.onerror = this.onerror;
+  trace("Created PeerConnectionClient");
 };
 Call.prototype.startSignaling_ = function() {
-  console.log("Starting signaling.");
+  trace("Starting signaling.");
   if (this.isInitiator() && this.oncallerstarted) {
     this.oncallerstarted(this.params_.roomId, this.params_.roomLink);
   }
   this.startTime = window.performance.now();
-  this.maybeCreatePcClient_();
-  if (this.localStream_) {
-    console.log("Adding local stream.");
-    this.pcClient_.addStream(this.localStream_);
-  }
-  if (this.params_.isInitiator) {
-    this.pcClient_.startAsCaller(this.params_.offerConstraints);
-  } else {
-    this.pcClient_.startAsCallee(this.params_.messages);
-  }
+  this.maybeCreatePcClientAsync_().then(function() {
+    if (this.localStream_) {
+      trace("Adding local stream.");
+      this.pcClient_.addStream(this.localStream_);
+    }
+    if (this.params_.isInitiator) {
+      this.pcClient_.startAsCaller(this.params_.offerOptions);
+    } else {
+      this.pcClient_.startAsCallee(this.params_.messages);
+    }
+  }.bind(this)).catch(function(e) {
+    this.onError_("Create PeerConnection exception: " + e);
+    alert("Cannot create RTCPeerConnection: " + e.message);
+  }.bind(this));
 };
 Call.prototype.joinRoom_ = function() {
   return new Promise(function(resolve, reject) {
@@ -776,9 +750,13 @@ Call.prototype.joinRoom_ = function() {
       }
       if (responseObj.result !== "SUCCESS") {
         reject(Error("Registration error: " + responseObj.result));
+        if (responseObj.result === "FULL") {
+          var getPath = this.roomServer_ + "/r/" + this.params_.roomId + window.location.search;
+          window.location.assign(getPath);
+        }
         return;
       }
-      console.log("Joined the room.");
+      trace("Joined the room.");
       resolve(responseObj.params);
     }.bind(this)).catch(function(error) {
       reject(Error("Failed to join the room: " + error.message));
@@ -787,8 +765,7 @@ Call.prototype.joinRoom_ = function() {
   }.bind(this));
 };
 Call.prototype.onRecvSignalingChannelMessage_ = function(msg) {
-  this.maybeCreatePcClient_();
-  this.pcClient_.receiveSignalingMessage(msg);
+  this.maybeCreatePcClientAsync_().then(this.pcClient_.receiveSignalingMessage(msg));
 };
 Call.prototype.sendSignalingMessage_ = function(message) {
   var msgString = JSON.stringify(message);
@@ -797,7 +774,7 @@ Call.prototype.sendSignalingMessage_ = function(message) {
     var xhr = new XMLHttpRequest;
     xhr.open("POST", path, true);
     xhr.send(msgString);
-    console.log("C->GAE: " + msgString);
+    trace("C->GAE: " + msgString);
   } else {
     this.channel_.send(msgString);
   }
@@ -808,18 +785,56 @@ Call.prototype.onError_ = function(message) {
   }
 };
 var Constants = {WS_ACTION:"ws", XHR_ACTION:"xhr", QUEUEADD_ACTION:"addToQueue", QUEUECLEAR_ACTION:"clearQueue", EVENT_ACTION:"event", WS_CREATE_ACTION:"create", WS_EVENT_ONERROR:"onerror", WS_EVENT_ONMESSAGE:"onmessage", WS_EVENT_ONOPEN:"onopen", WS_EVENT_ONCLOSE:"onclose", WS_EVENT_SENDERROR:"onsenderror", WS_SEND_ACTION:"send", WS_CLOSE_ACTION:"close"};
-var InfoBox = function(infoDiv, remoteVideo, call, versionInfo) {
+var InfoBox = function(infoDiv, call, versionInfo) {
   this.infoDiv_ = infoDiv;
-  this.remoteVideo_ = remoteVideo;
+  this.remoteVideo_ = document.getElementById("remote-video");
+  this.localVideo_ = document.getElementById("mini-video");
   this.call_ = call;
   this.versionInfo_ = versionInfo;
   this.errorMessages_ = [];
+  this.warningMessages_ = [];
   this.startTime_ = null;
   this.connectTime_ = null;
   this.stats_ = null;
   this.prevStats_ = null;
   this.getStatsTimer_ = null;
+  this.localTrackIds_ = {video:"", audio:""};
+  this.remoteTrackIds_ = {video:"", audio:""};
   this.iceCandidateTypes_ = {Local:{}, Remote:{}};
+  this.localDecodedFrames_ = 0;
+  this.localStartTime_ = 0;
+  this.localVideo_.addEventListener("playing", function(event) {
+    this.localDecodedFrames_ = event.target.webkitDecodedFrameCount;
+    this.localStartTime_ = (new Date).getTime();
+  }.bind(this));
+  this.remoteDecodedFrames_ = 0;
+  this.remoteStartTime_ = 0;
+  this.remoteVideo_.addEventListener("playing", function(event) {
+    this.remoteDecodedFrames_ = event.target.webkitDecodedFrameCount;
+    this.remoteStartTime_ = (new Date).getTime();
+  }.bind(this));
+};
+InfoBox.prototype.getLocalTrackIds = function(stream) {
+  stream.getTracks().forEach(function(track) {
+    if (track.kind === "audio") {
+      this.localTrackIds_.audio = track.id;
+    } else {
+      if (track.kind === "video") {
+        this.localTrackIds_.video = track.id;
+      }
+    }
+  }.bind(this));
+};
+InfoBox.prototype.getRemoteTrackIds = function(stream) {
+  stream.getTracks().forEach(function(track) {
+    if (track.kind === "audio") {
+      this.remoteTrackIds_.audio = track.id;
+    } else {
+      if (track.kind === "video") {
+        this.remoteTrackIds_.video = track.id;
+      }
+    }
+  }.bind(this));
 };
 InfoBox.prototype.recordIceCandidateTypes = function(location, candidate) {
   var type = iceCandidateType(candidate);
@@ -836,12 +851,17 @@ InfoBox.prototype.pushErrorMessage = function(msg) {
   this.updateInfoDiv();
   this.showInfoDiv();
 };
+InfoBox.prototype.pushWarningMessage = function(msg) {
+  this.warningMessages_.push(msg);
+  this.updateInfoDiv();
+  this.showInfoDiv();
+};
 InfoBox.prototype.setSetupTimes = function(startTime, connectTime) {
   this.startTime_ = startTime;
   this.connectTime_ = connectTime;
 };
 InfoBox.prototype.showInfoDiv = function() {
-  this.getStatsTimer_ = setInterval(this.refreshStats_.bind(this), 1E3);
+  this.getStatsTimer_ = setInterval(this.refreshStats_.bind(this), 1000);
   this.refreshStats_();
   this.infoDiv_.classList.add("active");
 };
@@ -856,7 +876,7 @@ InfoBox.prototype.toggleInfoDiv = function() {
 InfoBox.prototype.refreshStats_ = function() {
   this.call_.getPeerConnectionStats(function(response) {
     this.prevStats_ = this.stats_;
-    this.stats_ = response.result();
+    this.stats_ = response;
     this.updateInfoDiv();
   }.bind(this));
 };
@@ -878,28 +898,44 @@ InfoBox.prototype.updateInfoDiv = function() {
       }
       contents += this.buildLine_(endpoint, types.join(" "));
     }
-    var activeCandPair = getStatsReport(this.stats_, "googCandidatePair", "googActiveConnection", "true");
+    var statReport = enumerateStats(this.stats_, this.localTrackIds_, this.remoteTrackIds_);
+    var connectionStats = statReport.connection;
     var localAddr;
     var remoteAddr;
     var localAddrType;
     var remoteAddrType;
-    if (activeCandPair) {
-      localAddr = activeCandPair.stat("googLocalAddress");
-      remoteAddr = activeCandPair.stat("googRemoteAddress");
-      localAddrType = activeCandPair.stat("googLocalCandidateType");
-      remoteAddrType = activeCandPair.stat("googRemoteCandidateType");
+    var localPort;
+    var remotePort;
+    if (connectionStats) {
+      localAddr = connectionStats.localIp;
+      remoteAddr = connectionStats.remoteIp;
+      localAddrType = connectionStats.localType;
+      remoteAddrType = connectionStats.remoteType;
+      localPort = connectionStats.localPort;
+      remotePort = connectionStats.remotePort;
     }
     if (localAddr && remoteAddr) {
-      contents += this.buildLine_("LocalAddr", localAddr + " (" + localAddrType + ")");
+      var relayProtocol = connectionStats.localRelayProtocol;
+      contents += this.buildLine_("LocalAddr", localAddr + " (" + localAddrType + (typeof relayProtocol !== undefined ? "" + "TURN/" + relayProtocol.toUpperCase() : "") + ")");
+      contents += this.buildLine_("LocalPort", localPort);
       contents += this.buildLine_("RemoteAddr", remoteAddr + " (" + remoteAddrType + ")");
+      contents += this.buildLine_("RemotePort", remotePort);
     }
     contents += this.buildLine_();
     contents += this.buildStatsSection_();
   }
-  if (this.errorMessages_.length) {
-    this.infoDiv_.classList.add("warning");
-    for (var i = 0;i !== this.errorMessages_.length;++i) {
-      contents += this.errorMessages_[i] + "\n";
+  if (this.errorMessages_.length > 0 || this.warningMessages_.length > 0) {
+    contents += this.buildLine_("\nMessages");
+    if (this.errorMessages_.length) {
+      this.infoDiv_.classList.add("warning");
+      for (var i = 0; i !== this.errorMessages_.length; ++i) {
+        contents += this.errorMessages_[i] + "\n";
+      }
+    } else {
+      this.infoDiv_.classList.add("active");
+      for (var j = 0; j !== this.warningMessages_.length; ++j) {
+        contents += this.warningMessages_[j] + "\n";
+      }
     }
   } else {
     this.infoDiv_.classList.remove("warning");
@@ -918,72 +954,114 @@ InfoBox.prototype.updateInfoDiv = function() {
 };
 InfoBox.prototype.buildStatsSection_ = function() {
   var contents = this.buildLine_("Stats");
-  var rtt = extractStatAsInt(this.stats_, "ssrc", "googRtt");
-  var captureStart = extractStatAsInt(this.stats_, "ssrc", "googCaptureStartNtpTimeMs");
-  var e2eDelay = computeE2EDelay(captureStart, this.remoteVideo_.currentTime);
+  var statReport = enumerateStats(this.stats_, this.localTrackIds_, this.remoteTrackIds_);
+  var prevStatReport = enumerateStats(this.prevStats_, this.localTrackIds_, this.remoteTrackIds_);
+  var totalRtt = statReport.connection.totalRoundTripTime * 1000;
+  var currentRtt = statReport.connection.currentRoundTripTime * 1000;
   if (this.endTime_ !== null) {
     contents += this.buildLine_("Call time", InfoBox.formatInterval_(window.performance.now() - this.connectTime_));
     contents += this.buildLine_("Setup time", InfoBox.formatMsec_(this.connectTime_ - this.startTime_));
   }
-  if (rtt !== null) {
-    contents += this.buildLine_("RTT", InfoBox.formatMsec_(rtt));
+  if (statReport.connection.remoteIp !== "") {
+    contents += this.buildLine_("TotalRtt", InfoBox.formatMsec_(totalRtt));
+    contents += this.buildLine_("CurrentRtt", InfoBox.formatMsec_(currentRtt));
   }
-  if (e2eDelay !== null) {
-    contents += this.buildLine_("End to end", InfoBox.formatMsec_(e2eDelay));
-  }
-  var txAudio = getStatsReport(this.stats_, "ssrc", "audioInputLevel");
-  var rxAudio = getStatsReport(this.stats_, "ssrc", "audioOutputLevel");
-  var txVideo = getStatsReport(this.stats_, "ssrc", "googFirsReceived");
-  var rxVideo = getStatsReport(this.stats_, "ssrc", "googFirsSent");
-  var txPrevAudio = getStatsReport(this.prevStats_, "ssrc", "audioInputLevel");
-  var rxPrevAudio = getStatsReport(this.prevStats_, "ssrc", "audioOutputLevel");
-  var txPrevVideo = getStatsReport(this.prevStats_, "ssrc", "googFirsReceived");
-  var rxPrevVideo = getStatsReport(this.prevStats_, "ssrc", "googFirsSent");
-  var txAudioCodec;
-  var txAudioBitrate;
-  var txAudioPacketRate;
-  var rxAudioCodec;
+  var rxAudio = statReport.audio.remote;
+  var rxPrevAudio = prevStatReport.audio.remote;
+  var rxPrevVideo = prevStatReport.video.remote;
+  var rxVideo = statReport.video.remote;
+  var txAudio = statReport.audio.local;
+  var txPrevAudio = prevStatReport.audio.local;
+  var txPrevVideo = prevStatReport.video.local;
+  var txVideo = statReport.video.local;
   var rxAudioBitrate;
+  var rxAudioClockRate;
+  var rxAudioCodec;
+  var rxAudioJitter;
+  var rxAudioLevel;
   var rxAudioPacketRate;
-  var txVideoHeight;
-  var txVideoFps;
-  var txVideoCodec;
-  var txVideoBitrate;
-  var txVideoPacketRate;
-  var rxVideoHeight;
-  var rxVideoFps;
-  var rxVideoCodec;
+  var rxAudioPlType;
   var rxVideoBitrate;
+  var rxVideoCodec;
+  var rxVideoDroppedFrames;
+  var rxVideoFirCount;
+  var rxVideoFps;
+  var rxVideoHeight;
+  var rxVideoNackCount;
   var rxVideoPacketRate;
-  if (txAudio) {
-    txAudioCodec = txAudio.stat("googCodecName");
+  var rxVideoPliCount;
+  var rxVideoPlType;
+  var txAudioBitrate;
+  var txAudioClockRate;
+  var txAudioCodec;
+  var txAudioLevel;
+  var txAudioPacketRate;
+  var txAudioPlType;
+  var txVideoBitrate;
+  var txVideoCodec;
+  var txVideoFirCount;
+  var txVideoFps;
+  var txVideoHeight;
+  var txVideoNackCount;
+  var txVideoPacketRate;
+  var txVideoPliCount;
+  var txVideoPlType;
+  if (txAudio.codecId !== "" && txAudio.payloadType !== 0) {
+    txAudioCodec = txAudio.mimeType;
+    txAudioLevel = parseFloat(txAudio.audioLevel).toFixed(3);
+    txAudioClockRate = txAudio.clockRate;
+    txAudioPlType = txAudio.payloadType;
     txAudioBitrate = computeBitrate(txAudio, txPrevAudio, "bytesSent");
     txAudioPacketRate = computeRate(txAudio, txPrevAudio, "packetsSent");
-    contents += this.buildLine_("Audio Tx", txAudioCodec + ", " + InfoBox.formatBitrate_(txAudioBitrate) + ", " + InfoBox.formatPacketRate_(txAudioPacketRate));
+    contents += this.buildLine_("Audio Tx", txAudioCodec + "/" + txAudioPlType + ", " + "rate " + txAudioClockRate + ", " + InfoBox.formatBitrate_(txAudioBitrate) + ", " + InfoBox.formatPacketRate_(txAudioPacketRate) + ", inputLevel " + txAudioLevel);
   }
-  if (rxAudio) {
-    rxAudioCodec = rxAudio.stat("googCodecName");
+  if (rxAudio.codecId !== "" && rxAudio.payloadType !== 0) {
+    rxAudioCodec = rxAudio.mimeType;
+    rxAudioLevel = parseFloat(rxAudio.audioLevel).toFixed(3);
+    rxAudioJitter = parseFloat(rxAudio.jitter).toFixed(3);
+    rxAudioClockRate = rxAudio.clockRate;
+    rxAudioPlType = rxAudio.payloadType;
     rxAudioBitrate = computeBitrate(rxAudio, rxPrevAudio, "bytesReceived");
     rxAudioPacketRate = computeRate(rxAudio, rxPrevAudio, "packetsReceived");
-    contents += this.buildLine_("Audio Rx", rxAudioCodec + ", " + InfoBox.formatBitrate_(rxAudioBitrate) + ", " + InfoBox.formatPacketRate_(rxAudioPacketRate));
+    contents += this.buildLine_("Audio Rx", rxAudioCodec + "/" + rxAudioPlType + ", " + "rate " + rxAudioClockRate + ", " + "jitter " + rxAudioJitter + ", " + InfoBox.formatBitrate_(rxAudioBitrate) + ", " + InfoBox.formatPacketRate_(rxAudioPacketRate) + ", outputLevel " + rxAudioLevel);
   }
-  if (txVideo) {
-    txVideoCodec = txVideo.stat("googCodecName");
-    txVideoHeight = txVideo.stat("googFrameHeightSent");
-    txVideoFps = txVideo.stat("googFrameRateSent");
+  if (txVideo.codecId !== "" && txVideo.payloadType !== 0 && txVideo.frameHeight !== 0) {
+    txVideoCodec = txVideo.mimeType;
+    txVideoHeight = txVideo.frameHeight;
+    txVideoPlType = txVideo.payloadType;
+    txVideoPliCount = txVideo.pliCount;
+    txVideoFirCount = txVideo.firCount;
+    txVideoNackCount = txVideo.nackCount;
+    txVideoFps = calculateFps(this.remoteVideo_, this.remoteDecodedFrames_, this.remoteStartTime_, "local", this.updateDecodedFramesCallback_);
     txVideoBitrate = computeBitrate(txVideo, txPrevVideo, "bytesSent");
     txVideoPacketRate = computeRate(txVideo, txPrevVideo, "packetsSent");
-    contents += this.buildLine_("Video Tx", txVideoCodec + ", " + txVideoHeight.toString() + "p" + txVideoFps.toString() + ", " + InfoBox.formatBitrate_(txVideoBitrate) + ", " + InfoBox.formatPacketRate_(txVideoPacketRate));
+    contents += this.buildLine_("Video Tx", txVideoCodec + "/" + txVideoPlType + ", " + txVideoHeight.toString() + "p" + txVideoFps.toString() + ", " + "firCount " + txVideoFirCount + ", " + "pliCount " + txVideoPliCount + ", " + "nackCount " + txVideoNackCount + ", " + InfoBox.formatBitrate_(txVideoBitrate) + ", " + InfoBox.formatPacketRate_(txVideoPacketRate));
   }
-  if (rxVideo) {
-    rxVideoCodec = "TODO";
-    rxVideoHeight = this.remoteVideo_.videoHeight;
-    rxVideoFps = rxVideo.stat("googFrameRateDecoded");
+  if (rxVideo.codecId !== "" && rxVideo.payloadType !== 0 && txVideo.frameHeight !== 0) {
+    rxVideoCodec = rxVideo.mimeType;
+    rxVideoHeight = rxVideo.frameHeight;
+    rxVideoPlType = rxVideo.payloadType;
+    rxVideoDroppedFrames = rxVideo.framesDropped;
+    rxVideoPliCount = rxVideo.pliCount;
+    rxVideoFirCount = rxVideo.firCount;
+    rxVideoNackCount = rxVideo.nackCount;
+    rxVideoFps = calculateFps(this.remoteVideo_, this.remoteDecodedFrames_, this.remoteStartTime_, "remote", this.updateDecodedFramesCallback_);
     rxVideoBitrate = computeBitrate(rxVideo, rxPrevVideo, "bytesReceived");
     rxVideoPacketRate = computeRate(rxVideo, rxPrevVideo, "packetsReceived");
-    contents += this.buildLine_("Video Rx", rxVideoCodec + ", " + rxVideoHeight.toString() + "p" + rxVideoFps.toString() + ", " + InfoBox.formatBitrate_(rxVideoBitrate) + ", " + InfoBox.formatPacketRate_(rxVideoPacketRate));
+    contents += this.buildLine_("Video Rx", rxVideoCodec + "/" + rxVideoPlType + ", " + rxVideoHeight.toString() + "p" + rxVideoFps.toString() + ", " + "firCount " + rxVideoFirCount + ", " + "pliCount " + rxVideoPliCount + ", " + "nackCount " + rxVideoNackCount + ", " + "droppedFrames " + rxVideoDroppedFrames + ", " + InfoBox.formatBitrate_(rxVideoBitrate) + ", " + InfoBox.formatPacketRate_(rxVideoPacketRate));
   }
   return contents;
+};
+InfoBox.prototype.updateDecodedFramesCallback_ = function(decodedFrames_, startTime_, remoteOrLocal) {
+  if (remoteOrLocal === "local") {
+    this.localDecodedFrames_ = decodedFrames_;
+    this.localStartTime_ = startTime_;
+  } else {
+    if (remoteOrLocal === "remote") {
+      this.remoteDecodedFrames_ = decodedFrames_;
+      this.remoteStartTime_ = startTime_;
+    }
+  }
 };
 InfoBox.prototype.buildLine_ = function(label, value) {
   var columnWidth = 12;
@@ -1002,11 +1080,11 @@ InfoBox.prototype.buildLine_ = function(label, value) {
 };
 InfoBox.formatInterval_ = function(value) {
   var result = "";
-  var seconds = Math.floor(value / 1E3);
+  var seconds = Math.floor(value / 1000);
   var minutes = Math.floor(seconds / 60);
   var hours = Math.floor(minutes / 60);
   var formatTwoDigit = function(twodigit) {
-    return(twodigit < 10 ? "0" : "") + twodigit.toString();
+    return (twodigit < 10 ? "0" : "") + twodigit.toString();
   };
   if (hours > 0) {
     result += formatTwoDigit(hours) + ":";
@@ -1023,15 +1101,15 @@ InfoBox.formatBitrate_ = function(value) {
     return "- bps";
   }
   var suffix;
-  if (value < 1E3) {
+  if (value < 1000) {
     suffix = "bps";
   } else {
-    if (value < 1E6) {
+    if (value < 1000000) {
       suffix = "kbps";
-      value /= 1E3;
+      value /= 1000;
     } else {
       suffix = "Mbps";
-      value /= 1E6;
+      value /= 1000000;
     }
   }
   var str = value.toPrecision(3) + " " + suffix;
@@ -1046,13 +1124,14 @@ InfoBox.formatPacketRate_ = function(value) {
 var PeerConnectionClient = function(params, startTime) {
   this.params_ = params;
   this.startTime_ = startTime;
-  console.log("Creating RTCPeerConnnection with:\n" + "  config: '" + JSON.stringify(params.peerConnectionConfig) + "';\n" + "  constraints: '" + JSON.stringify(params.peerConnectionConstraints) + "'.");
+  trace("Creating RTCPeerConnnection with:\n" + "  config: '" + JSON.stringify(params.peerConnectionConfig) + "';\n" + "  constraints: '" + JSON.stringify(params.peerConnectionConstraints) + "'.");
   this.pc_ = new RTCPeerConnection(params.peerConnectionConfig, params.peerConnectionConstraints);
   this.pc_.onicecandidate = this.onIceCandidate_.bind(this);
-  this.pc_.onaddstream = this.onRemoteStreamAdded_.bind(this);
+  this.pc_.ontrack = this.onRemoteStreamAdded_.bind(this);
   this.pc_.onremovestream = trace.bind(null, "Remote stream removed.");
   this.pc_.onsignalingstatechange = this.onSignalingStateChanged_.bind(this);
   this.pc_.oniceconnectionstatechange = this.onIceConnectionStateChanged_.bind(this);
+  window.dispatchEvent(new CustomEvent("pccreated", {detail:{pc:this, time:new Date, userId:this.params_.roomId + (this.isInitiator_ ? "-0" : "-1"), sessionId:this.params_.roomId}}));
   this.hasRemoteSdp_ = false;
   this.messageQueue_ = [];
   this.isInitiator_ = false;
@@ -1066,14 +1145,14 @@ var PeerConnectionClient = function(params, startTime) {
   this.onsignalingmessage = null;
   this.onsignalingstatechange = null;
 };
-PeerConnectionClient.DEFAULT_SDP_CONSTRAINTS_ = {"mandatory":{"OfferToReceiveAudio":true, "OfferToReceiveVideo":true}, "optional":[{"VoiceActivityDetection":false}]};
+PeerConnectionClient.DEFAULT_SDP_OFFER_OPTIONS_ = {offerToReceiveAudio:1, offerToReceiveVideo:1, voiceActivityDetection:false};
 PeerConnectionClient.prototype.addStream = function(stream) {
   if (!this.pc_) {
     return;
   }
   this.pc_.addStream(stream);
 };
-PeerConnectionClient.prototype.startAsCaller = function(offerConstraints) {
+PeerConnectionClient.prototype.startAsCaller = function(offerOptions) {
   if (!this.pc_) {
     return false;
   }
@@ -1082,9 +1161,9 @@ PeerConnectionClient.prototype.startAsCaller = function(offerConstraints) {
   }
   this.isInitiator_ = true;
   this.started_ = true;
-  var constraints = mergeConstraints(offerConstraints, PeerConnectionClient.DEFAULT_SDP_CONSTRAINTS_);
-  console.log("Sending offer to peer, with constraints: \n'" + JSON.stringify(constraints) + "'.");
-  this.pc_.createOffer(this.setLocalSdpAndNotify_.bind(this), this.onError_.bind(this, "createOffer"), constraints);
+  var constraints = mergeConstraints(PeerConnectionClient.DEFAULT_SDP_OFFER_OPTIONS_, offerOptions);
+  trace("Sending offer to peer, with constraints: \n'" + JSON.stringify(constraints) + "'.");
+  this.pc_.createOffer(constraints).then(this.setLocalSdpAndNotify_.bind(this)).catch(this.onError_.bind(this, "createOffer"));
   return true;
 };
 PeerConnectionClient.prototype.startAsCallee = function(initialMessages) {
@@ -1097,7 +1176,7 @@ PeerConnectionClient.prototype.startAsCallee = function(initialMessages) {
   this.isInitiator_ = false;
   this.started_ = true;
   if (initialMessages && initialMessages.length > 0) {
-    for (var i = 0, len = initialMessages.length;i < len;i++) {
+    for (var i = 0, len = initialMessages.length; i < len; i++) {
       this.receiveSignalingMessage(initialMessages[i]);
     }
     return true;
@@ -1133,32 +1212,34 @@ PeerConnectionClient.prototype.close = function() {
     return;
   }
   this.pc_.close();
+  window.dispatchEvent(new CustomEvent("pcclosed", {detail:{pc:this, time:new Date}}));
   this.pc_ = null;
 };
 PeerConnectionClient.prototype.getPeerConnectionStates = function() {
   if (!this.pc_) {
     return null;
   }
-  return{"signalingState":this.pc_.signalingState, "iceGatheringState":this.pc_.iceGatheringState, "iceConnectionState":this.pc_.iceConnectionState};
+  return {"signalingState":this.pc_.signalingState, "iceGatheringState":this.pc_.iceGatheringState, "iceConnectionState":this.pc_.iceConnectionState};
 };
 PeerConnectionClient.prototype.getPeerConnectionStats = function(callback) {
   if (!this.pc_) {
     return;
   }
-  this.pc_.getStats(callback);
+  this.pc_.getStats(null).then(callback);
 };
 PeerConnectionClient.prototype.doAnswer_ = function() {
-  console.log("Sending answer to peer.");
-  this.pc_.createAnswer(this.setLocalSdpAndNotify_.bind(this), this.onError_.bind(this, "createAnswer"), PeerConnectionClient.DEFAULT_SDP_CONSTRAINTS_);
+  trace("Sending answer to peer.");
+  this.pc_.createAnswer().then(this.setLocalSdpAndNotify_.bind(this)).catch(this.onError_.bind(this, "createAnswer"));
 };
 PeerConnectionClient.prototype.setLocalSdpAndNotify_ = function(sessionDescription) {
   sessionDescription.sdp = maybePreferAudioReceiveCodec(sessionDescription.sdp, this.params_);
   sessionDescription.sdp = maybePreferVideoReceiveCodec(sessionDescription.sdp, this.params_);
   sessionDescription.sdp = maybeSetAudioReceiveBitRate(sessionDescription.sdp, this.params_);
   sessionDescription.sdp = maybeSetVideoReceiveBitRate(sessionDescription.sdp, this.params_);
-  this.pc_.setLocalDescription(sessionDescription, trace.bind(null, "Set session description success."), this.onError_.bind(this, "setLocalDescription"));
+  sessionDescription.sdp = maybeRemoveVideoFec(sessionDescription.sdp, this.params_);
+  this.pc_.setLocalDescription(sessionDescription).then(trace.bind(null, "Set session description success.")).catch(this.onError_.bind(this, "setLocalDescription"));
   if (this.onsignalingmessage) {
-    this.onsignalingmessage(sessionDescription);
+    this.onsignalingmessage({sdp:sessionDescription.sdp, type:sessionDescription.type});
   }
 };
 PeerConnectionClient.prototype.setRemoteSdp_ = function(message) {
@@ -1168,10 +1249,11 @@ PeerConnectionClient.prototype.setRemoteSdp_ = function(message) {
   message.sdp = maybeSetAudioSendBitRate(message.sdp, this.params_);
   message.sdp = maybeSetVideoSendBitRate(message.sdp, this.params_);
   message.sdp = maybeSetVideoSendInitialBitRate(message.sdp, this.params_);
-  this.pc_.setRemoteDescription(new RTCSessionDescription(message), this.onSetRemoteDescriptionSuccess_.bind(this), this.onError_.bind(this, "setRemoteDescription"));
+  message.sdp = maybeRemoveVideoFec(message.sdp, this.params_);
+  this.pc_.setRemoteDescription(new RTCSessionDescription(message)).then(this.onSetRemoteDescriptionSuccess_.bind(this)).catch(this.onError_.bind(this, "setRemoteDescription"));
 };
 PeerConnectionClient.prototype.onSetRemoteDescriptionSuccess_ = function() {
-  console.log("Set remote session description success.");
+  trace("Set remote session description success.");
   var remoteStreams = this.pc_.getRemoteStreams();
   if (this.onremotesdpset) {
     this.onremotesdpset(remoteStreams.length > 0 && remoteStreams[0].getVideoTracks().length > 0);
@@ -1180,7 +1262,7 @@ PeerConnectionClient.prototype.onSetRemoteDescriptionSuccess_ = function() {
 PeerConnectionClient.prototype.processSignalingMessage_ = function(message) {
   if (message.type === "offer" && !this.isInitiator_) {
     if (this.pc_.signalingState !== "stable") {
-      console.log("ERROR: remote offer received in unexpected state: " + this.pc_.signalingState);
+      trace("ERROR: remote offer received in unexpected state: " + this.pc_.signalingState);
       return;
     }
     this.setRemoteSdp_(message);
@@ -1188,7 +1270,7 @@ PeerConnectionClient.prototype.processSignalingMessage_ = function(message) {
   } else {
     if (message.type === "answer" && this.isInitiator_) {
       if (this.pc_.signalingState !== "have-local-offer") {
-        console.log("ERROR: remote answer received in unexpected state: " + this.pc_.signalingState);
+        trace("ERROR: remote answer received in unexpected state: " + this.pc_.signalingState);
         return;
       }
       this.setRemoteSdp_(message);
@@ -1196,9 +1278,9 @@ PeerConnectionClient.prototype.processSignalingMessage_ = function(message) {
       if (message.type === "candidate") {
         var candidate = new RTCIceCandidate({sdpMLineIndex:message.label, candidate:message.candidate});
         this.recordIceCandidate_("Remote", candidate);
-        this.pc_.addIceCandidate(candidate, trace.bind(null, "Remote candidate added successfully."), this.onError_.bind(this, "addIceCandidate"));
+        this.pc_.addIceCandidate(candidate).then(trace.bind(null, "Remote candidate added successfully.")).catch(this.onError_.bind(this, "addIceCandidate"));
       } else {
-        console.log("WARNING: unexpected message: " + JSON.stringify(message));
+        trace("WARNING: unexpected message: " + JSON.stringify(message));
       }
     }
   }
@@ -1207,7 +1289,7 @@ PeerConnectionClient.prototype.drainMessageQueue_ = function() {
   if (!this.pc_ || !this.started_ || !this.hasRemoteSdp_) {
     return;
   }
-  for (var i = 0, len = this.messageQueue_.length;i < len;i++) {
+  for (var i = 0, len = this.messageQueue_.length; i < len; i++) {
     this.processSignalingMessage_(this.messageQueue_[i]);
   }
   this.messageQueue_ = [];
@@ -1222,14 +1304,14 @@ PeerConnectionClient.prototype.onIceCandidate_ = function(event) {
       this.recordIceCandidate_("Local", event.candidate);
     }
   } else {
-    console.log("End of candidates.");
+    trace("End of candidates.");
   }
 };
 PeerConnectionClient.prototype.onSignalingStateChanged_ = function() {
   if (!this.pc_) {
     return;
   }
-  console.log("Signaling state changed to: " + this.pc_.signalingState);
+  trace("Signaling state changed to: " + this.pc_.signalingState);
   if (this.onsignalingstatechange) {
     this.onsignalingstatechange();
   }
@@ -1238,9 +1320,9 @@ PeerConnectionClient.prototype.onIceConnectionStateChanged_ = function() {
   if (!this.pc_) {
     return;
   }
-  console.log("ICE connection state changed to: " + this.pc_.iceConnectionState);
+  trace("ICE connection state changed to: " + this.pc_.iceConnectionState);
   if (this.pc_.iceConnectionState === "completed") {
-    console.log("ICE complete time: " + (window.performance.now() - this.startTime_).toFixed(0) + "ms.");
+    trace("ICE complete time: " + (window.performance.now() - this.startTime_).toFixed(0) + "ms.");
   }
   if (this.oniceconnectionstatechange) {
     this.oniceconnectionstatechange();
@@ -1263,12 +1345,70 @@ PeerConnectionClient.prototype.recordIceCandidate_ = function(location, candidat
 };
 PeerConnectionClient.prototype.onRemoteStreamAdded_ = function(event) {
   if (this.onremotestreamadded) {
-    this.onremotestreamadded(event.stream);
+    this.onremotestreamadded(event.streams[0]);
   }
 };
 PeerConnectionClient.prototype.onError_ = function(tag, error) {
   if (this.onerror) {
     this.onerror(tag + ": " + error.toString());
+  }
+};
+var RemoteWebSocket = function(wssUrl, wssPostUrl) {
+  this.wssUrl_ = wssUrl;
+  apprtc.windowPort.addMessageListener(this.handleMessage_.bind(this));
+  this.sendMessage_({action:Constants.WS_ACTION, wsAction:Constants.WS_CREATE_ACTION, wssUrl:wssUrl, wssPostUrl:wssPostUrl});
+  this.readyState = WebSocket.CONNECTING;
+};
+RemoteWebSocket.prototype.sendMessage_ = function(message) {
+  apprtc.windowPort.sendMessage(message);
+};
+RemoteWebSocket.prototype.send = function(data) {
+  if (this.readyState !== WebSocket.OPEN) {
+    throw "Web socket is not in OPEN state: " + this.readyState;
+  }
+  this.sendMessage_({action:Constants.WS_ACTION, wsAction:Constants.WS_SEND_ACTION, data:data});
+};
+RemoteWebSocket.prototype.close = function() {
+  if (this.readyState === WebSocket.CLOSING || this.readyState === WebSocket.CLOSED) {
+    return;
+  }
+  this.readyState = WebSocket.CLOSING;
+  this.sendMessage_({action:Constants.WS_ACTION, wsAction:Constants.WS_CLOSE_ACTION});
+};
+RemoteWebSocket.prototype.handleMessage_ = function(message) {
+  if (message.action === Constants.WS_ACTION && message.wsAction === Constants.EVENT_ACTION) {
+    if (message.wsEvent === Constants.WS_EVENT_ONOPEN) {
+      this.readyState = WebSocket.OPEN;
+      if (this.onopen) {
+        this.onopen();
+      }
+    } else {
+      if (message.wsEvent === Constants.WS_EVENT_ONCLOSE) {
+        this.readyState = WebSocket.CLOSED;
+        if (this.onclose) {
+          this.onclose(message.data);
+        }
+      } else {
+        if (message.wsEvent === Constants.WS_EVENT_ONERROR) {
+          if (this.onerror) {
+            this.onerror(message.data);
+          }
+        } else {
+          if (message.wsEvent === Constants.WS_EVENT_ONMESSAGE) {
+            if (this.onmessage) {
+              this.onmessage(message.data);
+            }
+          } else {
+            if (message.wsEvent === Constants.WS_EVENT_SENDERROR) {
+              if (this.onsenderror) {
+                this.onsenderror(message.data);
+              }
+              trace("ERROR: web socket send failed: " + message.data);
+            }
+          }
+        }
+      }
+    }
   }
 };
 var RoomSelection = function(roomSelectionDiv, uiConstants, recentRoomsKey, setupCompletedCallback) {
@@ -1281,16 +1421,26 @@ var RoomSelection = function(roomSelectionDiv, uiConstants, recentRoomsKey, setu
   this.roomRecentList_ = this.roomSelectionDiv_.querySelector(uiConstants.roomSelectionRecentList);
   this.roomIdInput_.value = randomString(9);
   this.onRoomIdInput_();
-  this.roomIdInput_.addEventListener("input", this.onRoomIdInput_.bind(this), false);
-  this.roomIdInput_.addEventListener("keyup", this.onRoomIdKeyPress_.bind(this), false);
-  this.roomRandomButton_.addEventListener("click", this.onRandomButton_.bind(this), false);
-  this.roomJoinButton_.addEventListener("click", this.onJoinButton_.bind(this), false);
+  this.roomIdInputListener_ = this.onRoomIdInput_.bind(this);
+  this.roomIdInput_.addEventListener("input", this.roomIdInputListener_, false);
+  this.roomIdKeyupListener_ = this.onRoomIdKeyPress_.bind(this);
+  this.roomIdInput_.addEventListener("keyup", this.roomIdKeyupListener_, false);
+  this.roomRandomButtonListener_ = this.onRandomButton_.bind(this);
+  this.roomRandomButton_.addEventListener("click", this.roomRandomButtonListener_, false);
+  this.roomJoinButtonListener_ = this.onJoinButton_.bind(this);
+  this.roomJoinButton_.addEventListener("click", this.roomJoinButtonListener_, false);
   this.onRoomSelected = null;
   this.recentlyUsedList_ = new RoomSelection.RecentlyUsedList(recentRoomsKey);
   this.startBuildingRecentRoomList_();
 };
 RoomSelection.matchRandomRoomPattern = function(input) {
   return input.match(/^\d{9}$/) !== null;
+};
+RoomSelection.prototype.removeEventListeners = function() {
+  this.roomIdInput_.removeEventListener("input", this.roomIdInputListener_);
+  this.roomIdInput_.removeEventListener("keyup", this.roomIdKeyupListener_);
+  this.roomRandomButton_.removeEventListener("click", this.roomRandomButtonListener_);
+  this.roomJoinButton_.removeEventListener("click", this.roomJoinButtonListener_);
 };
 RoomSelection.prototype.startBuildingRecentRoomList_ = function() {
   this.recentlyUsedList_.getRecentRooms().then(function(recentRooms) {
@@ -1299,7 +1449,7 @@ RoomSelection.prototype.startBuildingRecentRoomList_ = function() {
       this.setupCompletedCallback_();
     }
   }.bind(this)).catch(function(error) {
-    console.log("Error building recent rooms list: " + error.message);
+    trace("Error building recent rooms list: " + error.message);
   }.bind(this));
 };
 RoomSelection.prototype.buildRecentRoomList_ = function(recentRooms) {
@@ -1308,7 +1458,7 @@ RoomSelection.prototype.buildRecentRoomList_ = function(recentRooms) {
     this.roomRecentList_.removeChild(lastChild);
     lastChild = this.roomRecentList_.lastChild;
   }
-  for (var i = 0;i < recentRooms.length;++i) {
+  for (var i = 0; i < recentRooms.length; ++i) {
     var li = document.createElement("li");
     var href = document.createElement("a");
     var linkText = document.createTextNode(recentRooms[i]);
@@ -1322,7 +1472,7 @@ RoomSelection.prototype.buildRecentRoomList_ = function(recentRooms) {
 RoomSelection.prototype.onRoomIdInput_ = function() {
   var room = this.roomIdInput_.value;
   var valid = room.length >= 5;
-  var re = /^\w+$/;
+  var re = /^([a-zA-Z0-9-_]+)+$/;
   valid = valid && re.exec(room);
   if (valid) {
     this.roomJoinButton_.disabled = false;
@@ -1395,73 +1545,14 @@ RoomSelection.RecentlyUsedList.prototype.getRecentRooms = function() {
     });
   }.bind(this));
 };
-var RemoteWebSocket = function(wssUrl, wssPostUrl) {
-  this.wssUrl_ = wssUrl;
-  apprtc.windowPort.addMessageListener(this.handleMessage_.bind(this));
-  this.sendMessage_({action:Constants.WS_ACTION, wsAction:Constants.WS_CREATE_ACTION, wssUrl:wssUrl, wssPostUrl:wssPostUrl});
-  this.readyState = WebSocket.CONNECTING;
-};
-RemoteWebSocket.prototype.sendMessage_ = function(message) {
-  apprtc.windowPort.sendMessage(message);
-};
-RemoteWebSocket.prototype.send = function(data) {
-  if (this.readyState !== WebSocket.OPEN) {
-    throw "Web socket is not in OPEN state: " + this.readyState;
-  }
-  this.sendMessage_({action:Constants.WS_ACTION, wsAction:Constants.WS_SEND_ACTION, data:data});
-};
-RemoteWebSocket.prototype.close = function() {
-  if (this.readyState === WebSocket.CLOSING || this.readyState === WebSocket.CLOSED) {
-    return;
-  }
-  this.readyState = WebSocket.CLOSING;
-  this.sendMessage_({action:Constants.WS_ACTION, wsAction:Constants.WS_CLOSE_ACTION});
-};
-RemoteWebSocket.prototype.handleMessage_ = function(message) {
-  if (message.action === Constants.WS_ACTION && message.wsAction === Constants.EVENT_ACTION) {
-    if (message.wsEvent === Constants.WS_EVENT_ONOPEN) {
-      this.readyState = WebSocket.OPEN;
-      if (this.onopen) {
-        this.onopen();
-      }
-    } else {
-      if (message.wsEvent === Constants.WS_EVENT_ONCLOSE) {
-        this.readyState = WebSocket.CLOSED;
-        if (this.onclose) {
-          this.onclose(message.data);
-        }
-      } else {
-        if (message.wsEvent === Constants.WS_EVENT_ONERROR) {
-          if (this.onerror) {
-            this.onerror(message.data);
-          }
-        } else {
-          if (message.wsEvent === Constants.WS_EVENT_ONMESSAGE) {
-            if (this.onmessage) {
-              this.onmessage(message.data);
-            }
-          } else {
-            if (message.wsEvent === Constants.WS_EVENT_SENDERROR) {
-              if (this.onsenderror) {
-                this.onsenderror(message.data);
-              }
-              console.log("ERROR: web socket send failed: " + message.data);
-            }
-          }
-        }
-      }
-    }
-  }
-};
 function mergeConstraints(cons1, cons2) {
   if (!cons1 || !cons2) {
     return cons1 || cons2;
   }
   var merged = cons1;
-  for (var name in cons2.mandatory) {
-    merged.mandatory[name] = cons2.mandatory[name];
+  for (var key in cons2) {
+    merged[key] = cons2[key];
   }
-  merged.optional = merged.optional.concat(cons2.optional);
   return merged;
 }
 function iceCandidateType(candidateStr) {
@@ -1482,6 +1573,13 @@ function maybeSetOpusOptions(sdp, params) {
       sdp = removeCodecParam(sdp, "opus/48000", "useinbandfec");
     }
   }
+  if (params.opusDtx === "true") {
+    sdp = setCodecParam(sdp, "opus/48000", "usedtx", "1");
+  } else {
+    if (params.opusDtx === "false") {
+      sdp = removeCodecParam(sdp, "opus/48000", "usedtx");
+    }
+  }
   if (params.opusMaxPbr) {
     sdp = setCodecParam(sdp, "opus/48000", "maxplaybackrate", params.opusMaxPbr);
   }
@@ -1491,35 +1589,35 @@ function maybeSetAudioSendBitRate(sdp, params) {
   if (!params.audioSendBitrate) {
     return sdp;
   }
-  console.log("Prefer audio send bitrate: " + params.audioSendBitrate);
+  trace("Prefer audio send bitrate: " + params.audioSendBitrate);
   return preferBitRate(sdp, params.audioSendBitrate, "audio");
 }
 function maybeSetAudioReceiveBitRate(sdp, params) {
   if (!params.audioRecvBitrate) {
     return sdp;
   }
-  console.log("Prefer audio receive bitrate: " + params.audioRecvBitrate);
+  trace("Prefer audio receive bitrate: " + params.audioRecvBitrate);
   return preferBitRate(sdp, params.audioRecvBitrate, "audio");
 }
 function maybeSetVideoSendBitRate(sdp, params) {
   if (!params.videoSendBitrate) {
     return sdp;
   }
-  console.log("Prefer video send bitrate: " + params.videoSendBitrate);
+  trace("Prefer video send bitrate: " + params.videoSendBitrate);
   return preferBitRate(sdp, params.videoSendBitrate, "video");
 }
 function maybeSetVideoReceiveBitRate(sdp, params) {
   if (!params.videoRecvBitrate) {
     return sdp;
   }
-  console.log("Prefer video receive bitrate: " + params.videoRecvBitrate);
+  trace("Prefer video receive bitrate: " + params.videoRecvBitrate);
   return preferBitRate(sdp, params.videoRecvBitrate, "video");
 }
 function preferBitRate(sdp, bitrate, mediaType) {
   var sdpLines = sdp.split("\r\n");
   var mLineIndex = findLine(sdpLines, "m=", mediaType);
   if (mLineIndex === null) {
-    console.log("Failed to add bandwidth line to sdp, as no m-line found");
+    trace("Failed to add bandwidth line to sdp, as no m-line found");
     return sdp;
   }
   var nextMLineIndex = findLineInRange(sdpLines, mLineIndex + 1, -1, "m=");
@@ -1528,7 +1626,7 @@ function preferBitRate(sdp, bitrate, mediaType) {
   }
   var cLineIndex = findLineInRange(sdpLines, mLineIndex + 1, nextMLineIndex, "c=");
   if (cLineIndex === null) {
-    console.log("Failed to add bandwidth line to sdp, as no c-line found");
+    trace("Failed to add bandwidth line to sdp, as no c-line found");
     return sdp;
   }
   var bLineIndex = findLineInRange(sdpLines, cLineIndex + 1, nextMLineIndex, "b=AS");
@@ -1541,15 +1639,15 @@ function preferBitRate(sdp, bitrate, mediaType) {
   return sdp;
 }
 function maybeSetVideoSendInitialBitRate(sdp, params) {
-  var initialBitrate = params.videoSendInitialBitrate;
+  var initialBitrate = parseInt(params.videoSendInitialBitrate);
   if (!initialBitrate) {
     return sdp;
   }
-  var maxBitrate = initialBitrate;
-  var bitrate = params.videoSendBitrate;
+  var maxBitrate = parseInt(initialBitrate);
+  var bitrate = parseInt(params.videoSendBitrate);
   if (bitrate) {
     if (initialBitrate > bitrate) {
-      console.log("Clamping initial bitrate to max bitrate of " + bitrate + " kbps.");
+      trace("Clamping initial bitrate to max bitrate of " + bitrate + " kbps.");
       initialBitrate = bitrate;
       params.videoSendInitialBitrate = initialBitrate;
     }
@@ -1558,12 +1656,79 @@ function maybeSetVideoSendInitialBitRate(sdp, params) {
   var sdpLines = sdp.split("\r\n");
   var mLineIndex = findLine(sdpLines, "m=", "video");
   if (mLineIndex === null) {
-    console.log("Failed to find video m-line");
+    trace("Failed to find video m-line");
     return sdp;
   }
-  sdp = setCodecParam(sdp, "VP8/90000", "x-google-min-bitrate", params.videoSendInitialBitrate.toString());
-  sdp = setCodecParam(sdp, "VP8/90000", "x-google-max-bitrate", maxBitrate.toString());
+  var videoMLine = sdpLines[mLineIndex];
+  var pattern = new RegExp("m=video\\s\\d+\\s[A-Z/]+\\s");
+  var sendPayloadType = videoMLine.split(pattern)[1].split(" ")[0];
+  var fmtpLine = sdpLines[findLine(sdpLines, "a=rtpmap", sendPayloadType)];
+  var codecName = fmtpLine.split("a=rtpmap:" + sendPayloadType)[1].split("/")[0];
+  var codec = params.videoSendCodec || codecName;
+  sdp = setCodecParam(sdp, codec, "x-google-min-bitrate", params.videoSendInitialBitrate.toString());
+  sdp = setCodecParam(sdp, codec, "x-google-max-bitrate", maxBitrate.toString());
   return sdp;
+}
+function removePayloadTypeFromMline(mLine, payloadType) {
+  mLine = mLine.split(" ");
+  for (var i = 0; i < mLine.length; ++i) {
+    if (mLine[i] === payloadType.toString()) {
+      mLine.splice(i, 1);
+    }
+  }
+  return mLine.join(" ");
+}
+function removeCodecByName(sdpLines, codec) {
+  var index = findLine(sdpLines, "a=rtpmap", codec);
+  if (index === null) {
+    return sdpLines;
+  }
+  var payloadType = getCodecPayloadTypeFromLine(sdpLines[index]);
+  sdpLines.splice(index, 1);
+  var mLineIndex = findLine(sdpLines, "m=", "video");
+  if (mLineIndex === null) {
+    return sdpLines;
+  }
+  sdpLines[mLineIndex] = removePayloadTypeFromMline(sdpLines[mLineIndex], payloadType);
+  return sdpLines;
+}
+function removeCodecByPayloadType(sdpLines, payloadType) {
+  var index = findLine(sdpLines, "a=rtpmap", payloadType.toString());
+  if (index === null) {
+    return sdpLines;
+  }
+  sdpLines.splice(index, 1);
+  var mLineIndex = findLine(sdpLines, "m=", "video");
+  if (mLineIndex === null) {
+    return sdpLines;
+  }
+  sdpLines[mLineIndex] = removePayloadTypeFromMline(sdpLines[mLineIndex], payloadType);
+  return sdpLines;
+}
+function maybeRemoveVideoFec(sdp, params) {
+  if (params.videoFec !== "false") {
+    return sdp;
+  }
+  var sdpLines = sdp.split("\r\n");
+  var index = findLine(sdpLines, "a=rtpmap", "red");
+  if (index === null) {
+    return sdp;
+  }
+  var redPayloadType = getCodecPayloadTypeFromLine(sdpLines[index]);
+  sdpLines = removeCodecByPayloadType(sdpLines, redPayloadType);
+  sdpLines = removeCodecByName(sdpLines, "ulpfec");
+  index = findLine(sdpLines, "a=fmtp", redPayloadType.toString());
+  if (index === null) {
+    return sdp;
+  }
+  var fmtpLine = parseFmtpLine(sdpLines[index]);
+  var rtxPayloadType = fmtpLine.pt;
+  if (rtxPayloadType === null) {
+    return sdp;
+  }
+  sdpLines.splice(index, 1);
+  sdpLines = removeCodecByPayloadType(sdpLines, rtxPayloadType);
+  return sdpLines.join("\r\n");
 }
 function maybePreferAudioSendCodec(sdp, params) {
   return maybePreferCodec(sdp, "audio", "send", params.audioSendCodec);
@@ -1579,19 +1744,28 @@ function maybePreferVideoReceiveCodec(sdp, params) {
 }
 function maybePreferCodec(sdp, type, dir, codec) {
   var str = type + " " + dir + " codec";
-  if (codec === "") {
-    console.log("No preference on " + str + ".");
+  if (!codec) {
+    trace("No preference on " + str + ".");
     return sdp;
   }
-  console.log("Prefer " + str + ": " + codec);
+  trace("Prefer " + str + ": " + codec);
   var sdpLines = sdp.split("\r\n");
   var mLineIndex = findLine(sdpLines, "m=", type);
   if (mLineIndex === null) {
     return sdp;
   }
-  var payload = getCodecPayloadType(sdpLines, codec);
-  if (payload) {
-    sdpLines[mLineIndex] = setDefaultCodec(sdpLines[mLineIndex], payload);
+  var payload = null;
+  for (var i = sdpLines.length - 1; i >= 0; --i) {
+    var index = findLineInRange(sdpLines, i, 0, "a=rtpmap", codec, "desc");
+    if (index !== null) {
+      i = index;
+      payload = getCodecPayloadTypeFromLine(sdpLines[index]);
+      if (payload) {
+        sdpLines[mLineIndex] = setDefaultCodec(sdpLines[mLineIndex], payload);
+      }
+    } else {
+      break;
+    }
   }
   sdp = sdpLines.join("\r\n");
   return sdp;
@@ -1638,7 +1812,7 @@ function removeCodecParam(sdp, codec, param) {
 function parseFmtpLine(fmtpLine) {
   var fmtpObj = {};
   var spacePos = fmtpLine.indexOf(" ");
-  var keyValues = fmtpLine.substring(spacePos + 1).split("; ");
+  var keyValues = fmtpLine.substring(spacePos + 1).split(";");
   var pattern = new RegExp("a=fmtp:(\\d+)");
   var result = fmtpLine.match(pattern);
   if (result && result.length === 2) {
@@ -1647,7 +1821,7 @@ function parseFmtpLine(fmtpLine) {
     return null;
   }
   var params = {};
-  for (var i = 0;i < keyValues.length;++i) {
+  for (var i = 0; i < keyValues.length; ++i) {
     var pair = keyValues[i].split("=");
     if (pair.length === 2) {
       params[pair[0]] = pair[1];
@@ -1671,7 +1845,7 @@ function writeFmtpLine(fmtpObj) {
   if (i === 0) {
     return null;
   }
-  return "a=fmtp:" + pt.toString() + " " + keyValues.join("; ");
+  return "a=fmtp:" + pt.toString() + " " + keyValues.join(";");
 }
 function findFmtpLine(sdpLines, codec) {
   var payload = getCodecPayloadType(sdpLines, codec);
@@ -1680,12 +1854,27 @@ function findFmtpLine(sdpLines, codec) {
 function findLine(sdpLines, prefix, substr) {
   return findLineInRange(sdpLines, 0, -1, prefix, substr);
 }
-function findLineInRange(sdpLines, startLine, endLine, prefix, substr) {
-  var realEndLine = endLine !== -1 ? endLine : sdpLines.length;
-  for (var i = startLine;i < realEndLine;++i) {
-    if (sdpLines[i].indexOf(prefix) === 0) {
-      if (!substr || sdpLines[i].toLowerCase().indexOf(substr.toLowerCase()) !== -1) {
-        return i;
+function findLineInRange(sdpLines, startLine, endLine, prefix, substr, direction) {
+  if (direction === undefined) {
+    direction = "asc";
+  }
+  direction = direction || "asc";
+  if (direction === "asc") {
+    var realEndLine = endLine !== -1 ? endLine : sdpLines.length;
+    for (var i = startLine; i < realEndLine; ++i) {
+      if (sdpLines[i].indexOf(prefix) === 0) {
+        if (!substr || sdpLines[i].toLowerCase().indexOf(substr.toLowerCase()) !== -1) {
+          return i;
+        }
+      }
+    }
+  } else {
+    var realStartLine = startLine !== -1 ? startLine : sdpLines.length - 1;
+    for (var j = realStartLine; j >= 0; --j) {
+      if (sdpLines[j].indexOf(prefix) === 0) {
+        if (!substr || sdpLines[j].toLowerCase().indexOf(substr.toLowerCase()) !== -1) {
+          return j;
+        }
       }
     }
   }
@@ -1696,7 +1885,7 @@ function getCodecPayloadType(sdpLines, codec) {
   return index ? getCodecPayloadTypeFromLine(sdpLines[index]) : null;
 }
 function getCodecPayloadTypeFromLine(sdpLine) {
-  var pattern = new RegExp("a=rtpmap:(\\d+) \\w+\\/\\d+");
+  var pattern = new RegExp("a=rtpmap:(\\d+) [a-zA-Z0-9-]+\\/\\d+");
   var result = sdpLine.match(pattern);
   return result && result.length === 2 ? result[1] : null;
 }
@@ -1704,7 +1893,7 @@ function setDefaultCodec(mLine, payload) {
   var elements = mLine.split(" ");
   var newLine = elements.slice(0, 3);
   newLine.push(payload);
-  for (var i = 3;i < elements.length;i++) {
+  for (var i = 3; i < elements.length; i++) {
     if (elements[i] !== payload) {
       newLine.push(elements[i]);
     }
@@ -1723,10 +1912,10 @@ function setDefaultCodec(mLine, payload) {
 };
 SignalingChannel.prototype.open = function() {
   if (this.websocket_) {
-    console.log("ERROR: SignalingChannel has already opened.");
+    trace("ERROR: SignalingChannel has already opened.");
     return;
   }
-  console.log("Opening signaling channel.");
+  trace("Opening signaling channel.");
   return new Promise(function(resolve, reject) {
     if (isChromeApp()) {
       this.websocket_ = new RemoteWebSocket(this.wssUrl_, this.wssPostUrl_);
@@ -1734,12 +1923,12 @@ SignalingChannel.prototype.open = function() {
       this.websocket_ = new WebSocket(this.wssUrl_);
     }
     this.websocket_.onopen = function() {
-      console.log("Signaling channel opened.");
+      trace("Signaling channel opened.");
       this.websocket_.onerror = function() {
-        console.log("Signaling channel error.");
+        trace("Signaling channel error.");
       };
       this.websocket_.onclose = function(event) {
-        console.log("Channel closed with code:" + event.code + " reason:" + event.reason);
+        trace("Channel closed with code:" + event.code + " reason:" + event.reason);
         this.websocket_ = null;
         this.registered_ = false;
       };
@@ -1749,14 +1938,14 @@ SignalingChannel.prototype.open = function() {
       resolve();
     }.bind(this);
     this.websocket_.onmessage = function(event) {
-      console.log("WSS->C: " + event.data);
+      trace("WSS->C: " + event.data);
       var message = parseJSON(event.data);
       if (!message) {
-        console.log("Failed to parse WSS message: " + event.data);
+        trace("Failed to parse WSS message: " + event.data);
         return;
       }
       if (message.error) {
-        console.log("Signaling server error message: " + message.error);
+        trace("Signaling server error message: " + message.error);
         return;
       }
       this.onmessage(message.msg);
@@ -1768,26 +1957,26 @@ SignalingChannel.prototype.open = function() {
 };
 SignalingChannel.prototype.register = function(roomId, clientId) {
   if (this.registered_) {
-    console.log("ERROR: SignalingChannel has already registered.");
+    trace("ERROR: SignalingChannel has already registered.");
     return;
   }
   this.roomId_ = roomId;
   this.clientId_ = clientId;
   if (!this.roomId_) {
-    console.log("ERROR: missing roomId.");
+    trace("ERROR: missing roomId.");
   }
   if (!this.clientId_) {
-    console.log("ERROR: missing clientId.");
+    trace("ERROR: missing clientId.");
   }
   if (!this.websocket_ || this.websocket_.readyState !== WebSocket.OPEN) {
-    console.log("WebSocket not open yet; saving the IDs to register later.");
+    trace("WebSocket not open yet; saving the IDs to register later.");
     return;
   }
-  console.log("Registering signaling channel.");
+  trace("Registering signaling channel.");
   var registerMessage = {cmd:"register", roomid:this.roomId_, clientid:this.clientId_};
   this.websocket_.send(JSON.stringify(registerMessage));
   this.registered_ = true;
-  console.log("Signaling channel registered.");
+  trace("Signaling channel registered.");
 };
 SignalingChannel.prototype.close = function(async) {
   if (this.websocket_) {
@@ -1799,7 +1988,7 @@ SignalingChannel.prototype.close = function(async) {
   }
   var path = this.getWssPostUrl();
   return sendUrlRequest("DELETE", path, async).catch(function(error) {
-    console.log("Error deleting web socket connection: " + error.message);
+    trace("Error deleting web socket connection: " + error.message);
   }.bind(this)).then(function() {
     this.clientId_ = null;
     this.roomId_ = null;
@@ -1808,10 +1997,10 @@ SignalingChannel.prototype.close = function(async) {
 };
 SignalingChannel.prototype.send = function(message) {
   if (!this.roomId_ || !this.clientId_) {
-    console.log("ERROR: SignalingChannel has not registered.");
+    trace("ERROR: SignalingChannel has not registered.");
     return;
   }
-  console.log("C->WSS: " + message);
+  trace("C->WSS: " + message);
   var wssMessage = {cmd:"send", msg:message};
   var msgString = JSON.stringify(wssMessage);
   if (this.websocket_ && this.websocket_.readyState === WebSocket.OPEN) {
@@ -1838,35 +2027,196 @@ function extractStatAsInt(stats, statObj, statName) {
 }
 function extractStat(stats, statObj, statName) {
   var report = getStatsReport(stats, statObj, statName);
-  if (report && report.names().indexOf(statName) !== -1) {
-    return report.stat(statName);
+  if (report && report[statName] !== -1) {
+    return report[statName];
   }
   return null;
 }
 function getStatsReport(stats, statObj, statName, statVal) {
+  var result = null;
   if (stats) {
-    for (var i = 0;i < stats.length;++i) {
-      var report = stats[i];
+    stats.forEach(function(report, stat) {
       if (report.type === statObj) {
         var found = true;
         if (statName) {
-          var val = report.stat(statName);
+          var val = statName === "id" ? report.id : report[statName];
           found = statVal !== undefined ? val === statVal : val;
         }
         if (found) {
-          return report;
+          result = report;
         }
       }
-    }
+    });
   }
+  return result;
+}
+function enumerateStats(stats, localTrackIds, remoteTrackIds) {
+  var statsObject = {audio:{local:{audioLevel:0.0, bytesSent:0, clockRate:0, codecId:"", mimeType:"", packetsSent:0, payloadType:0, timestamp:0.0, trackId:"", transportId:""}, remote:{audioLevel:0.0, bytesReceived:0, clockRate:0, codecId:"", fractionLost:0, jitter:0, mimeType:"", packetsLost:0, packetsReceived:0, payloadType:0, timestamp:0.0, trackId:"", transportId:""}}, video:{local:{bytesSent:0, clockRate:0, codecId:"", firCount:0, framesEncoded:0, frameHeight:0, framesSent:0, frameWidth:0, nackCount:0, 
+  packetsSent:0, payloadType:0, pliCount:0, qpSum:0, timestamp:0.0, trackId:"", transportId:""}, remote:{bytesReceived:0, clockRate:0, codecId:"", firCount:0, fractionLost:0, frameHeight:0, framesDecoded:0, framesDropped:0, framesReceived:0, frameWidth:0, nackCount:0, packetsLost:0, packetsReceived:0, payloadType:0, pliCount:0, qpSum:0, timestamp:0.0, trackId:"", transportId:""}}, connection:{availableOutgoingBitrate:0, bytesReceived:0, bytesSent:0, consentRequestsSent:0, currentRoundTripTime:0.0, 
+  localCandidateId:"", localCandidateType:"", localIp:"", localPort:0, localPriority:0, localProtocol:"", localRelayProtocol:undefined, remoteCandidateId:"", remoteCandidateType:"", remoteIp:"", remotePort:0, remotePriority:0, remoteProtocol:"", requestsReceived:0, requestsSent:0, responsesReceived:0, responsesSent:0, timestamp:0.0, totalRoundTripTime:0.0}};
+  if (stats) {
+    stats.forEach(function(report, stat) {
+      switch(report.type) {
+        case "outbound-rtp":
+          if (report.hasOwnProperty("trackId")) {
+            if (report.trackId.indexOf(localTrackIds.audio) !== -1) {
+              statsObject.audio.local.bytesSent = report.bytesSent;
+              statsObject.audio.local.codecId = report.codecId;
+              statsObject.audio.local.packetsSent = report.packetsSent;
+              statsObject.audio.local.timestamp = report.timestamp;
+              statsObject.audio.local.trackId = report.trackId;
+              statsObject.audio.local.transportId = report.transportId;
+            }
+            if (report.trackId.indexOf(localTrackIds.video) !== -1) {
+              statsObject.video.local.bytesSent = report.bytesSent;
+              statsObject.video.local.codecId = report.codecId;
+              statsObject.video.local.firCount = report.firCount;
+              statsObject.video.local.framesEncoded = report.frameEncoded;
+              statsObject.video.local.framesSent = report.framesSent;
+              statsObject.video.local.packetsSent = report.packetsSent;
+              statsObject.video.local.pliCount = report.pliCount;
+              statsObject.video.local.qpSum = report.qpSum;
+              statsObject.video.local.timestamp = report.timestamp;
+              statsObject.video.local.trackId = report.trackId;
+              statsObject.video.local.transportId = report.transportId;
+            }
+          }
+          break;
+        case "inbound-rtp":
+          if (report.hasOwnProperty("trackId")) {
+            if (report.trackId.indexOf(remoteTrackIds.audio) !== -1) {
+              statsObject.audio.remote.bytesReceived = report.bytesReceived;
+              statsObject.audio.remote.codecId = report.codecId;
+              statsObject.audio.remote.fractionLost = report.fractionLost;
+              statsObject.audio.remote.jitter = report.jitter;
+              statsObject.audio.remote.packetsLost = report.packetsLost;
+              statsObject.audio.remote.packetsReceived = report.packetsReceived;
+              statsObject.audio.remote.timestamp = report.timestamp;
+              statsObject.audio.remote.trackId = report.trackId;
+              statsObject.audio.remote.transportId = report.transportId;
+            }
+            if (report.trackId.indexOf(remoteTrackIds.video) !== -1) {
+              statsObject.video.remote.bytesReceived = report.bytesReceived;
+              statsObject.video.remote.codecId = report.codecId;
+              statsObject.video.remote.firCount = report.firCount;
+              statsObject.video.remote.fractionLost = report.fractionLost;
+              statsObject.video.remote.nackCount = report.nackCount;
+              statsObject.video.remote.packetsLost = report.patsLost;
+              statsObject.video.remote.packetsReceived = report.packetsReceived;
+              statsObject.video.remote.pliCount = report.pliCount;
+              statsObject.video.remote.qpSum = report.qpSum;
+              statsObject.video.remote.timestamp = report.timestamp;
+              statsObject.video.remote.trackId = report.trackId;
+              statsObject.video.remote.transportId = report.transportId;
+            }
+          }
+          break;
+        case "candidate-pair":
+          if (report.hasOwnProperty("availableOutgoingBitrate")) {
+            statsObject.connection.availableOutgoingBitrate = report.availableOutgoingBitrate;
+            statsObject.connection.bytesReceived = report.bytesReceived;
+            statsObject.connection.bytesSent = report.bytesSent;
+            statsObject.connection.consentRequestsSent = report.consentRequestsSent;
+            statsObject.connection.currentRoundTripTime = report.currentRoundTripTime;
+            statsObject.connection.localCandidateId = report.localCandidateId;
+            statsObject.connection.remoteCandidateId = report.remoteCandidateId;
+            statsObject.connection.requestsReceived = report.requestsReceived;
+            statsObject.connection.requestsSent = report.requestsSent;
+            statsObject.connection.responsesReceived = report.responsesReceived;
+            statsObject.connection.responsesSent = report.responsesSent;
+            statsObject.connection.timestamp = report.timestamp;
+            statsObject.connection.totalRoundTripTime = report.totalRoundTripTime;
+          }
+          break;
+        default:
+          return;
+      }
+    }.bind());
+    stats.forEach(function(report) {
+      switch(report.type) {
+        case "track":
+          if (report.hasOwnProperty("trackIdentifier")) {
+            if (report.trackIdentifier.indexOf(localTrackIds.video) !== -1) {
+              statsObject.video.local.frameHeight = report.frameHeight;
+              statsObject.video.local.framesSent = report.framesSent;
+              statsObject.video.local.frameWidth = report.frameWidth;
+            }
+            if (report.trackIdentifier.indexOf(remoteTrackIds.video) !== -1) {
+              statsObject.video.remote.frameHeight = report.frameHeight;
+              statsObject.video.remote.framesDecoded = report.framesDecoded;
+              statsObject.video.remote.framesDropped = report.framesDropped;
+              statsObject.video.remote.framesReceived = report.framesReceived;
+              statsObject.video.remote.frameWidth = report.frameWidth;
+            }
+            if (report.trackIdentifier.indexOf(localTrackIds.audio) !== -1) {
+              statsObject.audio.local.audioLevel = report.audioLevel;
+            }
+            if (report.trackIdentifier.indexOf(remoteTrackIds.audio) !== -1) {
+              statsObject.audio.remote.audioLevel = report.audioLevel;
+            }
+          }
+          break;
+        case "codec":
+          if (report.hasOwnProperty("id")) {
+            if (report.id.indexOf(statsObject.audio.local.codecId) !== -1) {
+              statsObject.audio.local.clockRate = report.clockRate;
+              statsObject.audio.local.mimeType = report.mimeType;
+              statsObject.audio.local.payloadType = report.payloadType;
+            }
+            if (report.id.indexOf(statsObject.audio.remote.codecId) !== -1) {
+              statsObject.audio.remote.clockRate = report.clockRate;
+              statsObject.audio.remote.mimeType = report.mimeType;
+              statsObject.audio.remote.payloadType = report.payloadType;
+            }
+            if (report.id.indexOf(statsObject.video.local.codecId) !== -1) {
+              statsObject.video.local.clockRate = report.clockRate;
+              statsObject.video.local.mimeType = report.mimeType;
+              statsObject.video.local.payloadType = report.payloadType;
+            }
+            if (report.id.indexOf(statsObject.video.remote.codecId) !== -1) {
+              statsObject.video.remote.clockRate = report.clockRate;
+              statsObject.video.remote.mimeType = report.mimeType;
+              statsObject.video.remote.payloadType = report.payloadType;
+            }
+          }
+          break;
+        case "local-candidate":
+          if (report.hasOwnProperty("id")) {
+            if (report.id.indexOf(statsObject.connection.localCandidateId) !== -1) {
+              statsObject.connection.localIp = report.ip;
+              statsObject.connection.localPort = report.port;
+              statsObject.connection.localPriority = report.priority;
+              statsObject.connection.localProtocol = report.protocol;
+              statsObject.connection.localType = report.candidateType;
+              statsObject.connection.localRelayProtocol = report.relayProtocol;
+            }
+          }
+          break;
+        case "remote-candidate":
+          if (report.hasOwnProperty("id")) {
+            if (report.id.indexOf(statsObject.connection.remoteCandidateId) !== -1) {
+              statsObject.connection.remoteIp = report.ip;
+              statsObject.connection.remotePort = report.port;
+              statsObject.connection.remotePriority = report.priority;
+              statsObject.connection.remoteProtocol = report.protocol;
+              statsObject.connection.remoteType = report.candidateType;
+            }
+          }
+          break;
+        default:
+          return;
+      }
+    }.bind());
+  }
+  return statsObject;
 }
 function computeRate(newReport, oldReport, statName) {
-  var newVal = newReport.stat(statName);
-  var oldVal = oldReport ? oldReport.stat(statName) : null;
+  var newVal = newReport[statName];
+  var oldVal = oldReport ? oldReport[statName] : null;
   if (newVal === null || oldVal === null) {
     return null;
   }
-  return(newVal - oldVal) / (newReport.timestamp - oldReport.timestamp) * 1E3;
+  return (newVal - oldVal) / (newReport.timestamp - oldReport.timestamp) * 1000;
 }
 function computeBitrate(newReport, oldReport, statName) {
   return computeRate(newReport, oldReport, statName) * 8;
@@ -1875,8 +2225,8 @@ function computeE2EDelay(captureStart, remoteVideoCurrentTime) {
   if (!captureStart) {
     return null;
   }
-  var nowNTP = Date.now() + 22089888E5;
-  return nowNTP - captureStart - remoteVideoCurrentTime * 1E3;
+  var nowNTP = Date.now() + 2208988800000;
+  return nowNTP - captureStart - remoteVideoCurrentTime * 1000;
 }
 ;var Storage = function() {
 };
@@ -1940,7 +2290,6 @@ function sendUrlRequest(method, url, async, body) {
       resolve(xhr.responseText);
     };
     xhr = new XMLHttpRequest;
-
     if (async) {
       xhr.onreadystatechange = function() {
         if (xhr.readyState !== 4) {
@@ -1950,36 +2299,27 @@ function sendUrlRequest(method, url, async, body) {
       };
     }
     xhr.open(method, url, async);
-    xhr.withCredentials = false;
-    xhr.setRequestHeader( 'Access-Control-Allow-Origin', '*');
     xhr.send(body);
     if (!async) {
       reportResults();
     }
   });
 }
-function requestTurnServers(turnRequestUrl, turnTransports) {
+function requestIceServers(iceServerRequestUrl, iceTransports) {
   return new Promise(function(resolve, reject) {
-    var method = isChromeApp() ? "POST" : "GET";
-    sendAsyncUrlRequest(method, turnRequestUrl).then(function(response) {
-      var turnServerResponse = parseJSON(response);
-      if (!turnServerResponse) {
+    sendAsyncUrlRequest("POST", iceServerRequestUrl).then(function(response) {
+      var iceServerRequestResponse = parseJSON(response);
+      if (!iceServerRequestResponse) {
         reject(Error("Error parsing response JSON: " + response));
         return;
       }
-      if (turnTransports.length > 0) {
-        filterTurnUrls(turnServerResponse.uris, turnTransports);
+      if (iceTransports !== "") {
+        filterIceServersUrls(iceServerRequestResponse, iceTransports);
       }
-      var turnServers = createIceServers(turnServerResponse.uris, turnServerResponse.username, turnServerResponse.password);
-      console.log(turnServers);
-      if (!turnServers) {
-        reject(Error("Error creating ICE servers from response."));
-        return;
-      }
-      console.log("Retrieved TURN server information.");
-      resolve(turnServers);
+      trace("Retrieved ICE server information.");
+      resolve(iceServerRequestResponse.iceServers);
     }).catch(function(error) {
-      reject(Error("TURN server request error: " + error.message));
+      reject(Error("ICE server request error: " + error.message));
       return;
     });
   });
@@ -1988,19 +2328,32 @@ function parseJSON(json) {
   try {
     return JSON.parse(json);
   } catch (e) {
-    console.log("Error parsing json: " + json);
+    trace("Error parsing json: " + json);
   }
   return null;
 }
-function filterTurnUrls(urls, protocol) {
-  for (var i = 0;i < urls.length;) {
-    var parts = urls[i].split("?");
-    if (parts.length > 1 && parts[1] !== "transport=" + protocol) {
-      urls.splice(i, 1);
-    } else {
-      ++i;
+function filterIceServersUrls(config, protocol) {
+  var transport = "transport=" + protocol;
+  var newIceServers = [];
+  for (var i = 0; i < config.iceServers.length; ++i) {
+    var iceServer = config.iceServers[i];
+    var newUrls = [];
+    for (var j = 0; j < iceServer.urls.length; ++j) {
+      var url = iceServer.urls[j];
+      if (url.indexOf(transport) !== -1) {
+        newUrls.push(url);
+      } else {
+        if (url.indexOf("?transport=") === -1) {
+          newUrls.push(url + "?" + transport);
+        }
+      }
+    }
+    if (newUrls.length !== 0) {
+      iceServer.urls = newUrls;
+      newIceServers.push(iceServer);
     }
   }
+  config.iceServers = newIceServers;
 }
 function setUpFullScreen() {
   if (isChromeApp()) {
@@ -2023,7 +2376,7 @@ function isFullScreen() {
   if (isChromeApp()) {
     return chrome.app.window.current().isFullscreen();
   }
-  return!!(document.webkitIsFullScreen || document.mozFullScreen || document.isFullScreen);
+  return !!(document.webkitIsFullScreen || document.mozFullScreen || document.isFullScreen);
 }
 function fullScreenElement() {
   return document.webkitFullScreenElement || document.webkitCurrentFullScreenElement || document.mozFullScreenElement || document.fullScreenElement;
@@ -2040,6 +2393,30 @@ function randomString(strLength) {
 function isChromeApp() {
   return typeof chrome !== "undefined" && typeof chrome.storage !== "undefined" && typeof chrome.storage.local !== "undefined";
 }
+function calculateFps(videoElement, decodedFrames, startTime, remoteOrLocal, callback) {
+  var fps = 0;
+  if (videoElement && typeof videoElement.webkitDecodedFrameCount !== undefined) {
+    if (videoElement.readyState >= videoElement.HAVE_CURRENT_DATA) {
+      var currentTime = (new Date).getTime();
+      var deltaTime = (currentTime - startTime) / 1000;
+      var startTimeToReturn = currentTime;
+      fps = (videoElement.webkitDecodedFrameCount - decodedFrames) / deltaTime;
+      callback(videoElement.webkitDecodedFrameCount, startTimeToReturn, remoteOrLocal);
+    }
+  }
+  return parseInt(fps);
+}
+function trace(text) {
+  if (text[text.length - 1] === "\n") {
+    text = text.substring(0, text.length - 1);
+  }
+  if (window.performance) {
+    var now = (window.performance.now() / 1000).toFixed(3);
+    console.log(now + ": " + text);
+  } else {
+    console.log(text);
+  }
+}
 ;var apprtc = apprtc || {};
 apprtc.windowPort = apprtc.windowPort || {};
 (function() {
@@ -2049,7 +2426,7 @@ apprtc.windowPort = apprtc.windowPort || {};
     try {
       port.postMessage(message);
     } catch (ex) {
-      console.log("Error sending message via port: " + ex);
+      trace("Error sending message via port: " + ex);
     }
   };
   apprtc.windowPort.addMessageListener = function(listener) {
@@ -2063,3 +2440,4 @@ apprtc.windowPort = apprtc.windowPort || {};
     return port_;
   };
 })();
+
