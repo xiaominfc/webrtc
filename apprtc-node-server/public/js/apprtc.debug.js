@@ -32,7 +32,12 @@ if (navigator.mozGetUserMedia) {
   };
   window.RTCSessionDescription = mozRTCSessionDescription;
   window.RTCIceCandidate = mozRTCIceCandidate;
-  getUserMedia = navigator.mozGetUserMedia.bind(navigator);
+  if(navigator.mediaDevices.getUserMedia) {
+    getUserMedia = navigator.mediaDevices.getUserMedia;  
+  }else {
+    getUserMedia = navigator.mozGetUserMedia.bind(navigator);
+  }
+  
   navigator.getUserMedia = getUserMedia;
   MediaStreamTrack.getSources = function(successCb) {
     setTimeout(function() {
