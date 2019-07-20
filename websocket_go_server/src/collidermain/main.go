@@ -17,9 +17,7 @@ var roomSrv = flag.String("room-server", "https://rtc.xiaominfc.com", "The origi
 
 func main() {
 	flag.Parse()
-
 	log.Printf("Starting collider: tls = %t, port = %d, room-server=%s", *tls, *port, *roomSrv)
-
 	c := collider.NewCollider(*roomSrv)
 	c.Run(*port, *tls)
 }

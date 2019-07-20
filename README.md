@@ -21,6 +21,61 @@ router.get('/turn', function(req, res, next) {
 
 可以用github上的一个项目 https://github.com/certbot/certbot 生成
 
+
+
+### install(centos7.x)
+
+#### 1 clone source code
+
+```
+git clone https://github.com/xiaominfc/webrtc.git 
+cd webrtc
+```
+
+#### 2 websocket_server
+
+
+```
+# install go 
+
+# root user(root用户下)
+yum install golang
+#config gopath
+
+# compile server
+cd websocket_go_server
+./build.sh
+
+# start server 
+./bin/collidermain --port=6000 --tls=false
+# config supervisor for demon server (配置 supervisor 守护改服务)
+# config nginx reproxy for server (配置nginx反向代理 支持ssl)
+
+```
+
+
+### 3 apprtc_server
+
+```
+# install nodejs
+# root user
+yum install nodejs
+
+
+# start server
+cd ../apprtc-node-server
+## config 
+node ./bin/www
+
+# config supervisor for demon server (配置 supervisor 守护改服务)
+# config nginx reproxy for server (配置nginx反向代理 支持ssl)
+
+```
+
+
+
+
+
 ### 在线demo
 [https://rtc.xiaominfc.com](https://rtc.xiaominfc.com)
 

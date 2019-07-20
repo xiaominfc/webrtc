@@ -13,12 +13,13 @@ const MAXUsersCount = 100;
 var constants = {
   LOOPBACK_CLIENT_ID: 'LOOPBACK_CLIENT_ID',
   //TURN_BASE_URL: 'https://computeengineondemand.appspot.com',
-  TURN_BASE_URL: 'https://rtc.xiaominfc.com',
+  TURN_BASE_URL: 'https://apprtc.xiaominfc.com',
   TURN_URL_TEMPLATE: '%s/turn?username=%s&key=%s',
   CEOD_KEY: '4080218913',
   WSS_HOST_ACTIVE_HOST_KEY: 'wss_host_active_host', //memcache key for the active collider host.
   //WSS_HOST_PORT_PAIRS: ['apprtc-ws.webrtc.org:443', 'apprtc-ws-2.webrtc.org:443'],
-  WSS_HOST_PORT_PAIRS: ['ws.xiaominfc.com:8089'],
+  //WSS_HOST_PORT_PAIRS: ['ws.xiaominfc.com:8089'],
+  WSS_HOST_PORT_PAIRS: ['rtcws.xiaominfc.com:443'],
   RESPONSE_ERROR: 'ERROR',
   RESPONSE_UNKNOWN_ROOM: 'UNKNOWN_ROOM',
   RESPONSE_UNKNOWN_CLIENT: 'UNKNOWN_CLIENT',
@@ -423,8 +424,7 @@ router.post('/message/:roomId/:clientId', function(req, res, next) {
       var postOptions = {
         //host: 'apprtc-ws.webrtc.org',//wssParams.host,
         host: wssParams.host,
-        //port: 443,
-        port: 8089,
+        port: 443,
         path: '/' + roomId + '/' + clientId,
         method: 'POST'
       };
