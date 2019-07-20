@@ -13,6 +13,8 @@ mozRTCSessionDescription, webkitRTCPeerConnection */
 
 'use strict';
 
+import { constants } from "http2";
+
 var RTCPeerConnection = null;
 var getUserMedia = null;
 var attachMediaStream = null;
@@ -227,7 +229,14 @@ function requestUserMedia(constraints) {
     try {
       getUserMedia(constraints, onSuccess, onError);
     } catch (e) {
-      reject(e);
+      //reject(e);
+      getUserMedia(constants).then(function(stream) {
+        onSuccess(stream);
+        /* use the stream */ 
+      }).catch(function(err) {
+        /* handle the error */
+        onError(err);
+      });
     }
   });
 }
