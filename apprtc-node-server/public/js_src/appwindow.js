@@ -13,7 +13,7 @@
 'use strict';
 
 // Generate random room id and connect.
-var roomServer = 'https://appr.tc';
+var roomServer = 'https://apprtc.xiaominfc.com';
 var loadingParams = {
   errorMessages: [],
   warningMessages: [],
