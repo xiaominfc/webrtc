@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2014 The WebRTC project authors. All Rights Reserved.
+ *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
  *
  *  Use of this source code is governed by a BSD-style license
  *  that can be found in the LICENSE file in the root of the source
@@ -14,9 +14,13 @@
    maybeSetAudioSendBitRate, maybeSetVideoSendBitRate,
    maybeSetAudioReceiveBitRate, maybeSetVideoSendInitialBitRate,
    maybeSetVideoReceiveBitRate, maybeSetVideoSendInitialBitRate,
-   maybeSetOpusOptions */
+   maybeRemoveVideoFec, maybeSetOpusOptions, DOMException */
 
 /* exported PeerConnectionClient */
+
+// TODO(jansson) disabling for now since we are going replace JSHINT.
+// (It does not say where the strict violation is hence it's not worth fixing.).
+// jshint strict:false
 
 'use strict';
 
@@ -33,11 +37,19 @@ var PeerConnectionClient = function(params, startTime) {
   this.pc_ = new RTCPeerConnection(
       params.peerConnectionConfig, params.peerConnectionConstraints);
   this.pc_.onicecandidate = this.onIceCandidate_.bind(this);
-  this.pc_.onaddstream = this.onRemoteStreamAdded_.bind(this);
+  this.pc_.ontrack = this.onRemoteStreamAdded_.bind(this);
   this.pc_.onremovestream = trace.bind(null, 'Remote stream removed.');
   this.pc_.onsignalingstatechange = this.onSignalingStateChanged_.bind(this);
   this.pc_.oniceconnectionstatechange =
       this.onIceConnectionStateChanged_.bind(this);
+  window.dispatchEvent(new CustomEvent('pccreated', {
+    detail: {
+      pc: this,
+      time: new Date(),
+      userId: this.params_.roomId + (this.isInitiator_ ? '-0' : '-1'),
+      sessionId: this.params_.roomId
+    }
+  }));
 
   this.hasRemoteSdp_ = false;
   this.messageQueue_ = [];
@@ -58,14 +70,10 @@ var PeerConnectionClient = function(params, startTime) {
 
 // Set up audio and video regardless of what devices are present.
 // Disable comfort noise for maximum audio quality.
-PeerConnectionClient.DEFAULT_SDP_CONSTRAINTS_ = {
-  'mandatory': {
-    'OfferToReceiveAudio': true,
-    'OfferToReceiveVideo': true
-  },
-  'optional': [{
-    'VoiceActivityDetection': false
-  }]
+PeerConnectionClient.DEFAULT_SDP_OFFER_OPTIONS_ = {
+  offerToReceiveAudio: 1,
+  offerToReceiveVideo: 1,
+  voiceActivityDetection: false
 };
 
 PeerConnectionClient.prototype.addStream = function(stream) {
@@ -75,7 +83,7 @@ PeerConnectionClient.prototype.addStream = function(stream) {
   this.pc_.addStream(stream);
 };
 
-PeerConnectionClient.prototype.startAsCaller = function(offerConstraints) {
+PeerConnectionClient.prototype.startAsCaller = function(offerOptions) {
   if (!this.pc_) {
     return false;
   }
@@ -87,12 +95,12 @@ PeerConnectionClient.prototype.startAsCaller = function(offerConstraints) {
   this.isInitiator_ = true;
   this.started_ = true;
   var constraints = mergeConstraints(
-      offerConstraints, PeerConnectionClient.DEFAULT_SDP_CONSTRAINTS_);
+      PeerConnectionClient.DEFAULT_SDP_OFFER_OPTIONS_, offerOptions);
   trace('Sending offer to peer, with constraints: \n\'' +
       JSON.stringify(constraints) + '\'.');
-  this.pc_.createOffer(this.setLocalSdpAndNotify_.bind(this),
-      this.onError_.bind(this, 'createOffer'),
-      constraints);
+  this.pc_.createOffer(constraints)
+      .then(this.setLocalSdpAndNotify_.bind(this))
+      .catch(this.onError_.bind(this, 'createOffer'));
 
   return true;
 };
@@ -150,7 +158,14 @@ PeerConnectionClient.prototype.close = function() {
   if (!this.pc_) {
     return;
   }
+
   this.pc_.close();
+  window.dispatchEvent(new CustomEvent('pcclosed', {
+    detail: {
+      pc: this,
+      time: new Date(),
+    }
+  }));
   this.pc_ = null;
 };
 
@@ -169,38 +184,49 @@ PeerConnectionClient.prototype.getPeerConnectionStats = function(callback) {
   if (!this.pc_) {
     return;
   }
-  this.pc_.getStats(callback);
+  this.pc_.getStats(null)
+      .then(callback);
 };
 
 PeerConnectionClient.prototype.doAnswer_ = function() {
   trace('Sending answer to peer.');
-  this.pc_.createAnswer(this.setLocalSdpAndNotify_.bind(this),
-      this.onError_.bind(this, 'createAnswer'),
-      PeerConnectionClient.DEFAULT_SDP_CONSTRAINTS_);
+  this.pc_.createAnswer()
+      .then(this.setLocalSdpAndNotify_.bind(this))
+      .catch(this.onError_.bind(this, 'createAnswer'));
 };
 
 PeerConnectionClient.prototype.setLocalSdpAndNotify_ =
     function(sessionDescription) {
-  sessionDescription.sdp = maybePreferAudioReceiveCodec(
-    sessionDescription.sdp,
-    this.params_);
-  sessionDescription.sdp = maybePreferVideoReceiveCodec(
-    sessionDescription.sdp,
-    this.params_);
-  sessionDescription.sdp = maybeSetAudioReceiveBitRate(
-    sessionDescription.sdp,
-    this.params_);
-  sessionDescription.sdp = maybeSetVideoReceiveBitRate(
-    sessionDescription.sdp,
-    this.params_);
-  this.pc_.setLocalDescription(sessionDescription,
-      trace.bind(null, 'Set session description success.'),
-      this.onError_.bind(this, 'setLocalDescription'));
+      sessionDescription.sdp = maybePreferAudioReceiveCodec(
+          sessionDescription.sdp,
+          this.params_);
+      sessionDescription.sdp = maybePreferVideoReceiveCodec(
+          sessionDescription.sdp,
+          this.params_);
+      sessionDescription.sdp = maybeSetAudioReceiveBitRate(
+          sessionDescription.sdp,
+          this.params_);
+      sessionDescription.sdp = maybeSetVideoReceiveBitRate(
+          sessionDescription.sdp,
+          this.params_);
+      sessionDescription.sdp = maybeRemoveVideoFec(
+          sessionDescription.sdp,
+          this.params_);
+      this.pc_.setLocalDescription(sessionDescription)
+          .then(trace.bind(null, 'Set session description success.'))
+          .catch(this.onError_.bind(this, 'setLocalDescription'));
 
-  if (this.onsignalingmessage) {
-    this.onsignalingmessage(sessionDescription);
-  }
-};
+      if (this.onsignalingmessage) {
+        // Chrome version of RTCSessionDescription can't be serialized directly
+        // because it JSON.stringify won't include attributes which are on the
+        // object's prototype chain. By creating the message to serialize
+        // explicitly we can avoid the issue.
+        this.onsignalingmessage({
+          sdp: sessionDescription.sdp,
+          type: sessionDescription.type
+        });
+      }
+    };
 
 PeerConnectionClient.prototype.setRemoteSdp_ = function(message) {
   message.sdp = maybeSetOpusOptions(message.sdp, this.params_);
@@ -209,9 +235,10 @@ PeerConnectionClient.prototype.setRemoteSdp_ = function(message) {
   message.sdp = maybeSetAudioSendBitRate(message.sdp, this.params_);
   message.sdp = maybeSetVideoSendBitRate(message.sdp, this.params_);
   message.sdp = maybeSetVideoSendInitialBitRate(message.sdp, this.params_);
-  this.pc_.setRemoteDescription(new RTCSessionDescription(message),
-      this.onSetRemoteDescriptionSuccess_.bind(this),
-      this.onError_.bind(this, 'setRemoteDescription'));
+  message.sdp = maybeRemoveVideoFec(message.sdp, this.params_);
+  this.pc_.setRemoteDescription(new RTCSessionDescription(message))
+      .then(this.onSetRemoteDescriptionSuccess_.bind(this))
+      .catch(this.onError_.bind(this, 'setRemoteDescription'));
 };
 
 PeerConnectionClient.prototype.onSetRemoteDescriptionSuccess_ = function() {
@@ -248,9 +275,9 @@ PeerConnectionClient.prototype.processSignalingMessage_ = function(message) {
       candidate: message.candidate
     });
     this.recordIceCandidate_('Remote', candidate);
-    this.pc_.addIceCandidate(candidate,
-        trace.bind(null, 'Remote candidate added successfully.'),
-        this.onError_.bind(this, 'addIceCandidate'));
+    this.pc_.addIceCandidate(candidate)
+        .then(trace.bind(null, 'Remote candidate added successfully.'))
+        .catch(this.onError_.bind(this, 'addIceCandidate'));
   } else {
     trace('WARNING: unexpected message: ' + JSON.stringify(message));
   }
@@ -343,14 +370,14 @@ PeerConnectionClient.prototype.filterIceCandidate_ = function(candidateObj) {
 
 PeerConnectionClient.prototype.recordIceCandidate_ =
     function(location, candidateObj) {
-  if (this.onnewicecandidate) {
-    this.onnewicecandidate(location, candidateObj.candidate);
-  }
-};
+      if (this.onnewicecandidate) {
+        this.onnewicecandidate(location, candidateObj.candidate);
+      }
+    };
 
 PeerConnectionClient.prototype.onRemoteStreamAdded_ = function(event) {
   if (this.onremotestreamadded) {
-    this.onremotestreamadded(event.stream);
+    this.onremotestreamadded(event.streams[0]);
   }
 };
 

@@ -8,13 +8,14 @@
 
 /* More information about these options at jshint.com/docs/options */
 
-/* globals trace */
-/* exported setCodecParam, iceCandidateType, maybeSetOpusOptions,
-   maybePreferAudioReceiveCodec, maybePreferAudioSendCodec,
-   maybeSetAudioReceiveBitRate, maybeSetAudioSendBitRate,
-   maybePreferVideoReceiveCodec, maybePreferVideoSendCodec,
-   maybeSetVideoReceiveBitRate, maybeSetVideoSendBitRate,
-   maybeSetVideoSendInitialBitRate, mergeConstraints, removeCodecParam */
+/* globals  adapter, trace */
+/* exported setCodecParam, iceCandidateType,
+   maybeSetOpusOptions, maybePreferAudioReceiveCodec,
+   maybePreferAudioSendCodec, maybeSetAudioReceiveBitRate,
+   maybeSetAudioSendBitRate, maybePreferVideoReceiveCodec,
+   maybePreferVideoSendCodec, maybeSetVideoReceiveBitRate,
+   maybeSetVideoSendBitRate, maybeSetVideoSendInitialBitRate,
+   maybeRemoveVideoFec, mergeConstraints, removeCodecParam*/
 
 'use strict';
 
@@ -23,10 +24,9 @@ function mergeConstraints(cons1, cons2) {
     return cons1 || cons2;
   }
   var merged = cons1;
-  for (var name in cons2.mandatory) {
-    merged.mandatory[name] = cons2.mandatory[name];
+  for (var key in cons2) {
+    merged[key] = cons2[key];
   }
-  merged.optional = merged.optional.concat(cons2.optional);
   return merged;
 }
 
@@ -49,6 +49,14 @@ function maybeSetOpusOptions(sdp, params) {
     sdp = setCodecParam(sdp, 'opus/48000', 'useinbandfec', '1');
   } else if (params.opusFec === 'false') {
     sdp = removeCodecParam(sdp, 'opus/48000', 'useinbandfec');
+  }
+
+  // Set Opus DTX, if opusdtx is true, unset it, if opusdtx is false, and
+  // do nothing if otherwise.
+  if (params.opusDtx === 'true') {
+    sdp = setCodecParam(sdp, 'opus/48000', 'usedtx', '1');
+  } else if (params.opusDtx === 'false') {
+    sdp = removeCodecParam(sdp, 'opus/48000', 'usedtx');
   }
 
   // Set Opus maxplaybackrate, if requested.
@@ -135,18 +143,17 @@ function preferBitRate(sdp, bitrate, mediaType) {
 // is specified. We'll also add a x-google-min-bitrate value, since the max
 // must be >= the min.
 function maybeSetVideoSendInitialBitRate(sdp, params) {
-  var initialBitrate = params.videoSendInitialBitrate;
+  var initialBitrate = parseInt(params.videoSendInitialBitrate);
   if (!initialBitrate) {
     return sdp;
   }
 
   // Validate the initial bitrate value.
-  var maxBitrate = initialBitrate;
-  var bitrate = params.videoSendBitrate;
+  var maxBitrate = parseInt(initialBitrate);
+  var bitrate = parseInt(params.videoSendBitrate);
   if (bitrate) {
     if (initialBitrate > bitrate) {
-      trace('Clamping initial bitrate to max bitrate of ' +
-                   bitrate + ' kbps.');
+      trace('Clamping initial bitrate to max bitrate of ' + bitrate + ' kbps.');
       initialBitrate = bitrate;
       params.videoSendInitialBitrate = initialBitrate;
     }
@@ -161,13 +168,99 @@ function maybeSetVideoSendInitialBitRate(sdp, params) {
     trace('Failed to find video m-line');
     return sdp;
   }
+  // Figure out the first codec payload type on the m=video SDP line.
+  var videoMLine = sdpLines[mLineIndex];
+  var pattern = new RegExp('m=video\\s\\d+\\s[A-Z/]+\\s');
+  var sendPayloadType = videoMLine.split(pattern)[1].split(' ')[0];
+  var fmtpLine = sdpLines[findLine(sdpLines, 'a=rtpmap', sendPayloadType)];
+  var codecName = fmtpLine.split('a=rtpmap:' +
+      sendPayloadType)[1].split('/')[0];
 
-  sdp = setCodecParam(sdp, 'VP8/90000', 'x-google-min-bitrate',
+  // Use codec from params if specified via URL param, otherwise use from SDP.
+  var codec = params.videoSendCodec || codecName;
+  sdp = setCodecParam(sdp, codec, 'x-google-min-bitrate',
       params.videoSendInitialBitrate.toString());
-  sdp = setCodecParam(sdp, 'VP8/90000', 'x-google-max-bitrate',
+  sdp = setCodecParam(sdp, codec, 'x-google-max-bitrate',
       maxBitrate.toString());
 
   return sdp;
+}
+
+function removePayloadTypeFromMline(mLine, payloadType) {
+  mLine = mLine.split(' ');
+  for (var i = 0; i < mLine.length; ++i) {
+    if (mLine[i] === payloadType.toString()) {
+      mLine.splice(i, 1);
+    }
+  }
+  return mLine.join(' ');
+}
+
+function removeCodecByName(sdpLines, codec) {
+  var index = findLine(sdpLines, 'a=rtpmap', codec);
+  if (index === null) {
+    return sdpLines;
+  }
+  var payloadType = getCodecPayloadTypeFromLine(sdpLines[index]);
+  sdpLines.splice(index, 1);
+
+  // Search for the video m= line and remove the codec.
+  var mLineIndex = findLine(sdpLines, 'm=', 'video');
+  if (mLineIndex === null) {
+    return sdpLines;
+  }
+  sdpLines[mLineIndex] = removePayloadTypeFromMline(sdpLines[mLineIndex],
+      payloadType);
+  return sdpLines;
+}
+
+function removeCodecByPayloadType(sdpLines, payloadType) {
+  var index = findLine(sdpLines, 'a=rtpmap', payloadType.toString());
+  if (index === null) {
+    return sdpLines;
+  }
+  sdpLines.splice(index, 1);
+
+  // Search for the video m= line and remove the codec.
+  var mLineIndex = findLine(sdpLines, 'm=', 'video');
+  if (mLineIndex === null) {
+    return sdpLines;
+  }
+  sdpLines[mLineIndex] = removePayloadTypeFromMline(sdpLines[mLineIndex],
+      payloadType);
+  return sdpLines;
+}
+
+function maybeRemoveVideoFec(sdp, params) {
+  if (params.videoFec !== 'false') {
+    return sdp;
+  }
+
+  var sdpLines = sdp.split('\r\n');
+
+  var index = findLine(sdpLines, 'a=rtpmap', 'red');
+  if (index === null) {
+    return sdp;
+  }
+  var redPayloadType = getCodecPayloadTypeFromLine(sdpLines[index]);
+  sdpLines = removeCodecByPayloadType(sdpLines, redPayloadType);
+
+  sdpLines = removeCodecByName(sdpLines, 'ulpfec');
+
+  // Remove fmtp lines associated with red codec.
+  index = findLine(sdpLines, 'a=fmtp', redPayloadType.toString());
+  if (index === null) {
+    return sdp;
+  }
+  var fmtpLine = parseFmtpLine(sdpLines[index]);
+  var rtxPayloadType = fmtpLine.pt;
+  if (rtxPayloadType === null) {
+    return sdp;
+  }
+  sdpLines.splice(index, 1);
+
+  sdpLines = removeCodecByPayloadType(sdpLines, rtxPayloadType);
+  return sdpLines.join('\r\n');
 }
 
 // Promotes |audioSendCodec| to be the first in the m=audio line, if set.
@@ -194,7 +287,7 @@ function maybePreferVideoReceiveCodec(sdp, params) {
 // The format of |codec| is 'NAME/RATE', e.g. 'opus/48000'.
 function maybePreferCodec(sdp, type, dir, codec) {
   var str = type + ' ' + dir + ' codec';
-  if (codec === '') {
+  if (!codec) {
     trace('No preference on ' + str + '.');
     return sdp;
   }
@@ -210,9 +303,23 @@ function maybePreferCodec(sdp, type, dir, codec) {
   }
 
   // If the codec is available, set it as the default in m line.
-  var payload = getCodecPayloadType(sdpLines, codec);
-  if (payload) {
-    sdpLines[mLineIndex] = setDefaultCodec(sdpLines[mLineIndex], payload);
+  var payload = null;
+  // Iterate through rtpmap enumerations to find all matching codec entries
+  for (var i = sdpLines.length-1; i >= 0 ; --i) {
+    // Finds first match in rtpmap
+    var index = findLineInRange(sdpLines, i, 0, 'a=rtpmap', codec, 'desc');
+    if (index !== null) {
+      // Skip all of the entries between i and index match
+      i = index;
+      payload = getCodecPayloadTypeFromLine(sdpLines[index]);
+      if (payload) {
+        // Move codec to top
+        sdpLines[mLineIndex] = setDefaultCodec(sdpLines[mLineIndex], payload);
+      }
+    } else {
+      // No match means we can break the loop
+      break;
+    }
   }
 
   sdp = sdpLines.join('\r\n');
@@ -273,7 +380,7 @@ function removeCodecParam(sdp, codec, param) {
 function parseFmtpLine(fmtpLine) {
   var fmtpObj = {};
   var spacePos = fmtpLine.indexOf(' ');
-  var keyValues = fmtpLine.substring(spacePos + 1).split('; ');
+  var keyValues = fmtpLine.substring(spacePos + 1).split(';');
 
   var pattern = new RegExp('a=fmtp:(\\d+)');
   var result = fmtpLine.match(pattern);
@@ -311,7 +418,7 @@ function writeFmtpLine(fmtpObj) {
   if (i === 0) {
     return null;
   }
-  return 'a=fmtp:' + pt.toString() + ' ' + keyValues.join('; ');
+  return 'a=fmtp:' + pt.toString() + ' ' + keyValues.join(';');
 }
 
 // Find fmtp attribute for |codec| in |sdpLines|.
@@ -330,13 +437,40 @@ function findLine(sdpLines, prefix, substr) {
 
 // Find the line in sdpLines[startLine...endLine - 1] that starts with |prefix|
 // and, if specified, contains |substr| (case-insensitive search).
-function findLineInRange(sdpLines, startLine, endLine, prefix, substr) {
-  var realEndLine = endLine !== -1 ? endLine : sdpLines.length;
-  for (var i = startLine; i < realEndLine; ++i) {
-    if (sdpLines[i].indexOf(prefix) === 0) {
-      if (!substr ||
-          sdpLines[i].toLowerCase().indexOf(substr.toLowerCase()) !== -1) {
-        return i;
+function findLineInRange(
+  sdpLines,
+  startLine,
+  endLine,
+  prefix,
+  substr,
+  direction
+) {
+  if (direction === undefined) {
+    direction = 'asc';
+  }
+
+  direction = direction || 'asc';
+
+  if (direction === 'asc') {
+    // Search beginning to end
+    var realEndLine = endLine !== -1 ? endLine : sdpLines.length;
+    for (var i = startLine; i < realEndLine; ++i) {
+      if (sdpLines[i].indexOf(prefix) === 0) {
+        if (!substr ||
+            sdpLines[i].toLowerCase().indexOf(substr.toLowerCase()) !== -1) {
+          return i;
+        }
+      }
+    }
+  } else {
+    // Search end to beginning
+    var realStartLine = startLine !== -1 ? startLine : sdpLines.length-1;
+    for (var j = realStartLine; j >= 0; --j) {
+      if (sdpLines[j].indexOf(prefix) === 0) {
+        if (!substr ||
+            sdpLines[j].toLowerCase().indexOf(substr.toLowerCase()) !== -1) {
+          return j;
+        }
       }
     }
   }
@@ -351,7 +485,7 @@ function getCodecPayloadType(sdpLines, codec) {
 
 // Gets the codec payload type from an a=rtpmap:X line.
 function getCodecPayloadTypeFromLine(sdpLine) {
-  var pattern = new RegExp('a=rtpmap:(\\d+) \\w+\\/\\d+');
+  var pattern = new RegExp('a=rtpmap:(\\d+) [a-zA-Z0-9-]+\\/\\d+');
   var result = sdpLine.match(pattern);
   return (result && result.length === 2) ? result[1] : null;
 }

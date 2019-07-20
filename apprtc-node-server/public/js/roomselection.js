@@ -14,7 +14,7 @@
 'use strict';
 
 var RoomSelection = function(roomSelectionDiv,
-    uiConstants, recentRoomsKey, setupCompletedCallback) {
+  uiConstants, recentRoomsKey, setupCompletedCallback) {
   this.roomSelectionDiv_ = roomSelectionDiv;
 
   this.setupCompletedCallback_ = setupCompletedCallback;
@@ -33,14 +33,20 @@ var RoomSelection = function(roomSelectionDiv,
   this.roomIdInput_.value = randomString(9);
   // Call onRoomIdInput_ now to validate initial state of input box.
   this.onRoomIdInput_();
-  this.roomIdInput_.addEventListener('input',
-      this.onRoomIdInput_.bind(this), false);
-  this.roomIdInput_.addEventListener('keyup',
-      this.onRoomIdKeyPress_.bind(this), false);
-  this.roomRandomButton_.addEventListener('click',
-      this.onRandomButton_.bind(this), false);
-  this.roomJoinButton_.addEventListener('click',
-      this.onJoinButton_.bind(this), false);
+
+  this.roomIdInputListener_ = this.onRoomIdInput_.bind(this);
+  this.roomIdInput_.addEventListener('input', this.roomIdInputListener_, false);
+
+  this.roomIdKeyupListener_ = this.onRoomIdKeyPress_.bind(this);
+  this.roomIdInput_.addEventListener('keyup', this.roomIdKeyupListener_, false);
+
+  this.roomRandomButtonListener_ = this.onRandomButton_.bind(this);
+  this.roomRandomButton_.addEventListener(
+      'click', this.roomRandomButtonListener_, false);
+
+  this.roomJoinButtonListener_ = this.onJoinButton_.bind(this);
+  this.roomJoinButton_.addEventListener(
+      'click', this.roomJoinButtonListener_, false);
 
   // Public callbacks. Keep it sorted.
   this.onRoomSelected = null;
@@ -51,6 +57,15 @@ var RoomSelection = function(roomSelectionDiv,
 
 RoomSelection.matchRandomRoomPattern = function(input) {
   return input.match(/^\d{9}$/) !== null;
+};
+
+RoomSelection.prototype.removeEventListeners = function() {
+  this.roomIdInput_.removeEventListener('input', this.roomIdInputListener_);
+  this.roomIdInput_.removeEventListener('keyup', this.roomIdKeyupListener_);
+  this.roomRandomButton_.removeEventListener(
+      'click', this.roomRandomButtonListener_);
+  this.roomJoinButton_.removeEventListener(
+      'click', this.roomJoinButtonListener_);
 };
 
 RoomSelection.prototype.startBuildingRecentRoomList_ = function() {
@@ -89,10 +104,11 @@ RoomSelection.prototype.buildRecentRoomList_ = function(recentRooms) {
 
 RoomSelection.prototype.onRoomIdInput_ = function() {
   // Validate room id, enable/disable join button.
-  // The server currently accepts only the \w character class.
+  // The server currently accepts only the \w character class and
+  // hyphen+underscor.
   var room = this.roomIdInput_.value;
   var valid = room.length >= 5;
-  var re = /^\w+$/;
+  var re = /^([a-zA-Z0-9-_]+)+$/;
   valid = valid && re.exec(room);
   if (valid) {
     this.roomJoinButton_.disabled = false;
@@ -145,7 +161,8 @@ RoomSelection.RecentlyUsedList = function(key) {
 
 // Add a room to the recently used list and store to local storage.
 RoomSelection.RecentlyUsedList.prototype.pushRecentRoom = function(roomId) {
-  // Push recent room to top of recent list, keep max of this.LISTLENGTH_ entries.
+  // Push recent room to top of recent list, keep max of this.LISTLENGTH_
+  // entries.
   return new Promise(function(resolve, reject) {
     if (!roomId) {
       resolve();
@@ -161,8 +178,8 @@ RoomSelection.RecentlyUsedList.prototype.pushRecentRoom = function(roomId) {
       recentRooms = recentRooms.slice(0, this.LISTLENGTH_);
       this.storage_.setStorage(this.RECENTROOMSKEY_,
           JSON.stringify(recentRooms), function() {
-        resolve();
-      });
+            resolve();
+          });
     }.bind(this)).catch(function(err) {
       reject(err);
     }.bind(this));

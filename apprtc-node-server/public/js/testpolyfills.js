@@ -7,7 +7,6 @@
  */
 
 /* More information about these options at jshint.com/docs/options */
-
 'use strict';
 
 Function.prototype.bind = Function.prototype.bind || function(thisp) {
@@ -15,13 +14,15 @@ Function.prototype.bind = Function.prototype.bind || function(thisp) {
   var suppliedArgs = Array.prototype.slice.call(arguments, 1);
   return function() {
     return fn.apply(thisp,
-                    suppliedArgs.concat(Array.prototype.slice.call(arguments)));
+        suppliedArgs.concat(Array.prototype.slice.call(arguments)));
   };
 };
 
 if (!window.performance) {
   window.performance = function() {};
-  window.performance.now = function() { return 0; };
+  window.performance.now = function() {
+    return 0;
+  };
 }
 
 window.RTCSessionDescription = window.RTCSessionDescription || function(input) {
@@ -69,6 +70,7 @@ MyPromise.all = function(promises) {
   }.bind(null, values));
 };
 
+/* jshint ignore:start */
 MyPromise.resolve = function(value) {
   return new MyPromise(function(resolve) {
     resolve(value);
@@ -76,40 +78,44 @@ MyPromise.resolve = function(value) {
 };
 
 MyPromise.reject = function(error) {
-  // JSHint flags the unused variable resolve.
-  return new MyPromise(function(resolve, reject) { // jshint ignore:line
+  return new MyPromise(function(resolve, reject) {
     reject(error);
   });
 };
+/* jshint ignore:end */
 
 MyPromise.prototype.then = function(onResolve, onReject) {
   switch (this.state_) {
-  case PROMISE_STATE.PENDING:
-    this.resolveCallback_ = onResolve;
-    this.rejectCallback_ = onReject;
-    break;
-  case PROMISE_STATE.FULLFILLED:
-    onResolve(this.value_);
-    break;
-  case PROMISE_STATE.REJECTED:
-    if (onReject) {
+    case PROMISE_STATE.PENDING:
+      this.resolveCallback_ = onResolve;
+      this.rejectCallback_ = onReject;
+      break;
+    case PROMISE_STATE.FULLFILLED:
+      onResolve(this.value_);
+      break;
+    case PROMISE_STATE.REJECTED:
+      if (onReject) {
+        onReject(this.reason_);
+      }
+      break;
+    default:
       onReject(this.reason_);
-    }
-    break;
   }
   return this;
 };
 
 MyPromise.prototype.catch = function(onReject) {
   switch (this.state_) {
-  case PROMISE_STATE.PENDING:
-    this.rejectCallback_ = onReject;
-    break;
-  case PROMISE_STATE.FULLFILLED:
-    break;
-  case PROMISE_STATE.REJECTED:
-    onReject(this.reason_);
-    break;
+    case PROMISE_STATE.PENDING:
+      this.rejectCallback_ = onReject;
+      break;
+    case PROMISE_STATE.FULLFILLED:
+      break;
+    case PROMISE_STATE.REJECTED:
+      onReject(this.reason_);
+      break;
+    default:
+      onReject(this.reason_);
   }
   return this;
 };
@@ -178,4 +184,4 @@ var myChrome = (function() {
   };
 })();
 
-window.chrome = window.chrome || myChrome;
+window.chrome = myChrome;

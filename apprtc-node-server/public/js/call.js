@@ -8,8 +8,8 @@
 
 /* More information about these options at jshint.com/docs/options */
 
-/* globals trace, requestTurnServers, sendUrlRequest, sendAsyncUrlRequest,
-   requestUserMedia, SignalingChannel, PeerConnectionClient, setupLoopback,
+/* globals trace, requestIceServers, sendUrlRequest, sendAsyncUrlRequest,
+   SignalingChannel, PeerConnectionClient, setupLoopback,
    parseJSON, isChromeApp, apprtc, Constants */
 
 /* exported Call */
@@ -25,7 +25,7 @@ var Call = function(params) {
 
   this.pcClient_ = null;
   this.localStream_ = null;
-
+  this.errorMessageQueue_ = [];
   this.startTime = null;
 
   // Public callbacks. Keep it sorted.
@@ -41,13 +41,13 @@ var Call = function(params) {
   this.onstatusmessage = null;
 
   this.getMediaPromise_ = null;
-  this.getTurnServersPromise_ = null;
-  this.requestMediaAndTurnServers_();
+  this.getIceServersPromise_ = null;
+  this.requestMediaAndIceServers_();
 };
 
-Call.prototype.requestMediaAndTurnServers_ = function() {
+Call.prototype.requestMediaAndIceServers_ = function() {
   this.getMediaPromise_ = this.maybeGetMedia_();
-  this.getTurnServersPromise_ = this.maybeGetTurnServers_();
+  this.getIceServersPromise_ = this.maybeGetIceServers_();
 };
 
 Call.prototype.isInitiator = function() {
@@ -106,7 +106,7 @@ Call.prototype.clearCleanupQueue_ = function() {
 Call.prototype.restart = function() {
   // Reinitialize the promises so the media gets hooked up as a result
   // of calling maybeGetMedia_.
-  this.requestMediaAndTurnServers_();
+  this.requestMediaAndIceServers_();
   this.start(this.params_.previousRoomId);
 };
 
@@ -118,7 +118,14 @@ Call.prototype.hangup = function(async) {
   }
 
   if (this.localStream_) {
-    this.localStream_.stop();
+    if (typeof this.localStream_.getTracks === 'undefined') {
+      // Support legacy browsers, like phantomJs we use to run tests.
+      this.localStream_.stop();
+    } else {
+      this.localStream_.getTracks().forEach(function(track) {
+        track.stop();
+      });
+    }
     this.localStream_ = null;
   }
 
@@ -147,32 +154,32 @@ Call.prototype.hangup = function(async) {
   var steps = [];
   steps.push({
     step: function() {
-        // Send POST request to /leave.
-        var path = this.getLeaveUrl_();
-        return sendUrlRequest('POST', path, async);
-      }.bind(this),
+      // Send POST request to /leave.
+      var path = this.getLeaveUrl_();
+      return sendUrlRequest('POST', path, async);
+    }.bind(this),
     errorString: 'Error sending /leave:'
   });
   steps.push({
     step: function() {
-        // Send bye to the other client.
-        this.channel_.send(JSON.stringify({type: 'bye'}));
-      }.bind(this),
+      // Send bye to the other client.
+      this.channel_.send(JSON.stringify({type: 'bye'}));
+    }.bind(this),
     errorString: 'Error sending bye:'
   });
   steps.push({
     step: function() {
-        // Close signaling channel.
-        return this.channel_.close(async);
-      }.bind(this),
+      // Close signaling channel.
+      return this.channel_.close(async);
+    }.bind(this),
     errorString: 'Error closing signaling channel:'
   });
   steps.push({
     step: function() {
-        this.params_.previousRoomId = this.params_.roomId;
-        this.params_.roomId = null;
-        this.params_.clientId = null;
-      }.bind(this),
+      this.params_.previousRoomId = this.params_.roomId;
+      this.params_.roomId = null;
+      this.params_.clientId = null;
+    }.bind(this),
     errorString: 'Error setting params:'
   });
 
@@ -183,31 +190,30 @@ Call.prototype.hangup = function(async) {
     var promise = Promise.resolve();
     for (var i = 0; i < steps.length; ++i) {
       promise = promise.then(steps[i].step).catch(
-        errorHandler.bind(this, steps[i].errorString));
+          errorHandler.bind(this, steps[i].errorString));
     }
 
     return promise;
-  } else {
-    // Execute the cleanup steps.
-    var executeStep = function(executor, errorString) {
-      try {
-        executor();
-      } catch (ex) {
-        trace(errorString + ' ' + ex);
-      }
-    };
-
-    for (var j = 0; j < steps.length; ++j) {
-      executeStep(steps[j].step, steps[j].errorString);
-    }
-
-    if (this.params_.roomId !== null || this.params_.clientId !== null) {
-      trace('ERROR: sync cleanup tasks did not complete successfully.');
-    } else {
-      trace('Cleanup completed.');
-    }
-    return Promise.resolve();
   }
+  // Execute the cleanup steps.
+  var executeStep = function(executor, errorString) {
+    try {
+      executor();
+    } catch (ex) {
+      trace(errorString + ' ' + ex);
+    }
+  };
+
+  for (var j = 0; j < steps.length; ++j) {
+    executeStep(steps[j].step, steps[j].errorString);
+  }
+
+  if (this.params_.roomId !== null || this.params_.clientId !== null) {
+    trace('ERROR: sync cleanup tasks did not complete successfully.');
+  } else {
+    trace('Cleanup completed.');
+  }
+  return Promise.resolve();
 };
 
 Call.prototype.getLeaveUrl_ = function() {
@@ -254,7 +260,6 @@ Call.prototype.toggleVideoMute = function() {
   for (var i = 0; i < videoTracks.length; ++i) {
     videoTracks[i].enabled = !videoTracks[i].enabled;
   }
-
   trace('Video ' + (videoTracks[0].enabled ? 'unmuted.' : 'muted.'));
 };
 
@@ -269,7 +274,6 @@ Call.prototype.toggleAudioMute = function() {
   for (var i = 0; i < audioTracks.length; ++i) {
     audioTracks[i].enabled = !audioTracks[i].enabled;
   }
-
   trace('Audio ' + (audioTracks[0].enabled ? 'unmuted.' : 'muted.'));
 };
 
@@ -294,14 +298,12 @@ Call.prototype.connectToRoom_ = function(roomId) {
         // The only difference in parameters should be clientId and isInitiator,
         // and the turn servers that we requested.
         // TODO(tkchin): clean up response format. JSHint doesn't like it.
-        /* jshint ignore:start */
-        //jscs:disable requireCamelCaseOrUpperCaseIdentifiers
+
         this.params_.clientId = roomParams.client_id;
         this.params_.roomId = roomParams.room_id;
         this.params_.roomLink = roomParams.room_link;
         this.params_.isInitiator = roomParams.is_initiator === 'true';
-        //jscs:enable requireCamelCaseOrUpperCaseIdentifiers
-        /* jshint ignore:end */
+
         this.params_.messages = roomParams.messages;
       }.bind(this)).catch(function(error) {
         this.onError_('Room server join error: ' + error.message);
@@ -317,7 +319,7 @@ Call.prototype.connectToRoom_ = function(roomId) {
     // and have media and TURN. Since we send candidates as soon as the peer
     // connection generates them we need to wait for the signaling channel to be
     // ready.
-    Promise.all([this.getTurnServersPromise_, this.getMediaPromise_])
+    Promise.all([this.getIceServersPromise_, this.getMediaPromise_])
         .then(function() {
           this.startSignaling_();
           if (isChromeApp()) {
@@ -345,40 +347,63 @@ Call.prototype.maybeGetMedia_ = function() {
   if (needStream) {
     var mediaConstraints = this.params_.mediaConstraints;
 
-    mediaPromise = requestUserMedia(mediaConstraints).then(function(stream) {
-      trace('Got access to local media with mediaConstraints:\n' +
+    mediaPromise = navigator.mediaDevices.getUserMedia(mediaConstraints)
+        .catch(function(error) {
+          if (error.name !== 'NotFoundError') {
+            throw error;
+          }
+          return navigator.mediaDevices.enumerateDevices()
+              .then(function(devices) {
+                var cam = devices.find(function(device) {
+                  return device.kind === 'videoinput';
+                });
+                var mic = devices.find(function(device) {
+                  return device.kind === 'audioinput';
+                });
+                var constraints = {
+                  video: cam && mediaConstraints.video,
+                  audio: mic && mediaConstraints.audio
+                };
+                return navigator.mediaDevices.getUserMedia(constraints);
+              });
+        })
+        .then(function(stream) {
+          trace('Got access to local media with mediaConstraints:\n' +
           '  \'' + JSON.stringify(mediaConstraints) + '\'');
 
-      this.onUserMediaSuccess_(stream);
-    }.bind(this)).catch(function(error) {
-      this.onError_('Error getting user media: ' + error.message);
-      this.onUserMediaError_(error);
-    }.bind(this));
+          this.onUserMediaSuccess_(stream);
+        }.bind(this)).catch(function(error) {
+          this.onError_('Error getting user media: ' + error.message);
+          this.onUserMediaError_(error);
+        }.bind(this));
   } else {
     mediaPromise = Promise.resolve();
   }
   return mediaPromise;
 };
 
-// Asynchronously request a TURN server if needed.
-Call.prototype.maybeGetTurnServers_ = function() {
-  var shouldRequestTurnServers =
-      (this.params_.turnRequestUrl && this.params_.turnRequestUrl.length > 0);
+// Asynchronously request an ICE server if needed.
+Call.prototype.maybeGetIceServers_ = function() {
+  var shouldRequestIceServers =
+      (this.params_.iceServerRequestUrl &&
+      this.params_.iceServerRequestUrl.length > 0 &&
+      this.params_.peerConnectionConfig.iceServers &&
+      this.params_.peerConnectionConfig.iceServers.length === 0);
 
-  var turnPromise = null;
-  if (shouldRequestTurnServers) {
-    var requestUrl = this.params_.turnRequestUrl;
-    turnPromise =
-        requestTurnServers(requestUrl, this.params_.turnTransports).then(
-        function(turnServers) {
-          var iceServers = this.params_.peerConnectionConfig.iceServers;
-          this.params_.peerConnectionConfig.iceServers =
-              iceServers.concat(turnServers);
-        }.bind(this)).catch(function(error) {
+  var iceServerPromise = null;
+  if (shouldRequestIceServers) {
+    var requestUrl = this.params_.iceServerRequestUrl;
+    iceServerPromise =
+        requestIceServers(requestUrl, this.params_.iceServerTransports).then(
+            function(iceServers) {
+              var servers = this.params_.peerConnectionConfig.iceServers;
+              this.params_.peerConnectionConfig.iceServers =
+              servers.concat(iceServers);
+            }.bind(this)).catch(function(error) {
           if (this.onstatusmessage) {
-            // Error retrieving TURN servers.
+            // Error retrieving ICE servers.
             var subject =
-                encodeURIComponent('AppRTC demo TURN server not working');
+                encodeURIComponent('AppRTC demo ICE servers not working');
             this.onstatusmessage(
                 'No TURN server; unlikely that media will traverse networks. ' +
                 'If this persists please ' +
@@ -389,9 +414,9 @@ Call.prototype.maybeGetTurnServers_ = function() {
           trace(error.message);
         }.bind(this));
   } else {
-    turnPromise = Promise.resolve();
+    iceServerPromise = Promise.resolve();
   }
-  return turnPromise;
+  return iceServerPromise;
 };
 
 Call.prototype.onUserMediaSuccess_ = function(stream) {
@@ -405,30 +430,48 @@ Call.prototype.onUserMediaError_ = function(error) {
   var errorMessage = 'Failed to get access to local media. Error name was ' +
       error.name + '. Continuing without sending a stream.';
   this.onError_('getUserMedia error: ' + errorMessage);
+  this.errorMessageQueue_.push(error);
   alert(errorMessage);
 };
 
-Call.prototype.maybeCreatePcClient_ = function() {
-  if (this.pcClient_) {
-    return;
-  }
-  try {
-    this.pcClient_ = new PeerConnectionClient(this.params_, this.startTime);
-    this.pcClient_.onsignalingmessage = this.sendSignalingMessage_.bind(this);
-    this.pcClient_.onremotehangup = this.onremotehangup;
-    this.pcClient_.onremotesdpset = this.onremotesdpset;
-    this.pcClient_.onremotestreamadded = this.onremotestreamadded;
-    this.pcClient_.onsignalingstatechange = this.onsignalingstatechange;
-    this.pcClient_.oniceconnectionstatechange = this.oniceconnectionstatechange;
-    this.pcClient_.onnewicecandidate = this.onnewicecandidate;
-    this.pcClient_.onerror = this.onerror;
-    trace('Created PeerConnectionClient');
-  } catch (e) {
-    this.onError_('Create PeerConnection exception: ' + e.message);
-    alert('Cannot create RTCPeerConnection; ' +
-        'WebRTC is not supported by this browser.');
-    return;
-  }
+Call.prototype.maybeCreatePcClientAsync_ = function() {
+  return new Promise(function(resolve, reject) {
+    if (this.pcClient_) {
+      resolve();
+      return;
+    }
+
+    if (typeof RTCPeerConnection.generateCertificate === 'function') {
+      var certParams = {name: 'ECDSA', namedCurve: 'P-256'};
+      RTCPeerConnection.generateCertificate(certParams)
+          .then(function(cert) {
+            trace('ECDSA certificate generated successfully.');
+            this.params_.peerConnectionConfig.certificates = [cert];
+            this.createPcClient_();
+            resolve();
+          }.bind(this))
+          .catch(function(error) {
+            trace('ECDSA certificate generation failed.');
+            reject(error);
+          });
+    } else {
+      this.createPcClient_();
+      resolve();
+    }
+  }.bind(this));
+};
+
+Call.prototype.createPcClient_ = function() {
+  this.pcClient_ = new PeerConnectionClient(this.params_, this.startTime);
+  this.pcClient_.onsignalingmessage = this.sendSignalingMessage_.bind(this);
+  this.pcClient_.onremotehangup = this.onremotehangup;
+  this.pcClient_.onremotesdpset = this.onremotesdpset;
+  this.pcClient_.onremotestreamadded = this.onremotestreamadded;
+  this.pcClient_.onsignalingstatechange = this.onsignalingstatechange;
+  this.pcClient_.oniceconnectionstatechange = this.oniceconnectionstatechange;
+  this.pcClient_.onnewicecandidate = this.onnewicecandidate;
+  this.pcClient_.onerror = this.onerror;
+  trace('Created PeerConnectionClient');
 };
 
 Call.prototype.startSignaling_ = function() {
@@ -439,16 +482,22 @@ Call.prototype.startSignaling_ = function() {
 
   this.startTime = window.performance.now();
 
-  this.maybeCreatePcClient_();
-  if (this.localStream_) {
-    trace('Adding local stream.');
-    this.pcClient_.addStream(this.localStream_);
-  }
-  if (this.params_.isInitiator) {
-    this.pcClient_.startAsCaller(this.params_.offerConstraints);
-  } else {
-    this.pcClient_.startAsCallee(this.params_.messages);
-  }
+  this.maybeCreatePcClientAsync_()
+      .then(function() {
+        if (this.localStream_) {
+          trace('Adding local stream.');
+          this.pcClient_.addStream(this.localStream_);
+        }
+        if (this.params_.isInitiator) {
+          this.pcClient_.startAsCaller(this.params_.offerOptions);
+        } else {
+          this.pcClient_.startAsCallee(this.params_.messages);
+        }
+      }.bind(this))
+      .catch(function(e) {
+        this.onError_('Create PeerConnection exception: ' + e);
+        alert('Cannot create RTCPeerConnection: ' + e.message);
+      }.bind(this));
 };
 
 // Join the room and returns room parameters.
@@ -467,9 +516,15 @@ Call.prototype.joinRoom_ = function() {
         return;
       }
       if (responseObj.result !== 'SUCCESS') {
-        // TODO (chuckhays) : handle room full state by returning to room selection state.
+        // TODO (chuckhays) : handle room full state by returning to room
+        // selection state.
         // When room is full, responseObj.result === 'FULL'
         reject(Error('Registration error: ' + responseObj.result));
+        if (responseObj.result === 'FULL') {
+          var getPath = this.roomServer_ + '/r/' +
+              this.params_.roomId + window.location.search;
+          window.location.assign(getPath);
+        }
         return;
       }
       trace('Joined the room.');
@@ -482,8 +537,8 @@ Call.prototype.joinRoom_ = function() {
 };
 
 Call.prototype.onRecvSignalingChannelMessage_ = function(msg) {
-  this.maybeCreatePcClient_();
-  this.pcClient_.receiveSignalingMessage(msg);
+  this.maybeCreatePcClientAsync_()
+      .then(this.pcClient_.receiveSignalingMessage(msg));
 };
 
 Call.prototype.sendSignalingMessage_ = function(message) {
