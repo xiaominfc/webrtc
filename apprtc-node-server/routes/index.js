@@ -297,7 +297,7 @@ function getRoomParameters(req, roomId, clientId, isInitiator) {
   };
 
   var protocol = req.headers['x-forwarded-proto'];
-  if (!protocol) protocol = "http";
+  if (!protocol) protocol = "https";
   if (roomId) {
     params['room_id'] = roomId;
     params['room_link'] =  protocol + "://" + req.headers.host + '/r/' + roomId + '?' + querystring.stringify(req.query);
