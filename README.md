@@ -83,7 +83,7 @@ node ./bin/www
 
 
 ### 在线demo
-[https://rtc.xiaominfc.com](https://rtc.xiaominfc.com)
+[https://apprtc.xiaominfc.com](https://apprtc.xiaominfc.com)
 
 ### 欢迎联系讨论学习 
 qq:793101503
