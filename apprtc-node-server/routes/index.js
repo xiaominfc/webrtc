@@ -449,11 +449,11 @@ router.post('/message/:roomId/:clientId', function(req, res, next) {
 
 
 router.get('/turn', function(req, res, next) {
-  res.send({iceServers:[{urls:['turn://apprtc.xiaominfc.com:3478?transport=udp','turn://xiaominfc.com:3478?transport=tcp'],username:'rtc',credential:'rtc'}]});
+  res.send({iceServers:[{urls:['turn:apprtc.xiaominfc.com:3478?transport=udp','turn:xiaominfc.com:3478'],username:'rtc',credential:'rtc'}]});
 });
 
 router.post('/turn', function(req, res, next) {
-  res.send({iceServers:[{urls:['turn://apprtc.xiaominfc.com:3478?transport=udp','turn://xiaominfc.com:3478?transport=tcp'],username:'rtc',credential:'rtc'}]});
+  res.send({iceServers:[{urls:['turn:apprtc.xiaominfc.com:3478?transport=udp','turn:xiaominfc.com:3478?transport=tcp'],username:'rtc',credential:'rtc'}]});
 });
 
 router.get('/r/:roomId', function(req, res, next) {
