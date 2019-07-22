@@ -13,8 +13,8 @@ const MAXUsersCount = 100;
 var constants = {
   LOOPBACK_CLIENT_ID: 'LOOPBACK_CLIENT_ID',
   //TURN_BASE_URL: 'https://computeengineondemand.appspot.com',
-  TURN_BASE_URL: 'https://apprtc.xiaominfc.com',
-  TURN_URL_TEMPLATE: '%s/turn?username=%s&key=%s',
+  ICE_SERVER_BASE_URL: 'https://apprtc.xiaominfc.com',
+  ICE_SERVER_URL_TEMPLATE: '%s/turn?username=%s&key=%s',
   CEOD_KEY: '4080218913',
   WSS_HOST_ACTIVE_HOST_KEY: 'wss_host_active_host', //memcache key for the active collider host.
   //WSS_HOST_PORT_PAIRS: ['apprtc-ws.webrtc.org:443', 'apprtc-ws-2.webrtc.org:443'],
@@ -26,8 +26,8 @@ var constants = {
   RESPONSE_ROOM_FULL: 'FULL',
   RESPONSE_DUPLICATE_CLIENT: 'DUPLICATE_CLIENT',
   RESPONSE_SUCCESS: 'SUCCESS',
-  RESPONSE_INVALID_REQUEST: 'INVALID_REQUEST'
-
+  RESPONSE_INVALID_REQUEST: 'INVALID_REQUEST',
+  //ICE_SERVER_OVERRIDE : null
 };
 
 
@@ -49,8 +49,11 @@ function getHDDefault(userAgent) {
 }
 
 // iceServers will be filled in by the TURN HTTP request.
-function makePCConfig(iceTransports) {
-  var config = { iceServers: [] };
+function makePCConfig(iceTransports,ice_server_override) {
+  var config = { iceServers: [] ,bundlePolicy:'max-bundle',rtcpMuxPolicy:'require'};
+  if (ice_server_override) {
+    config.iceServers = ice_server_override;
+  }
   if (iceTransports) {
     config.iceTransports = iceTransports;
   }
@@ -174,17 +177,17 @@ function getRoomParameters(req, roomId, clientId, isInitiator) {
   var errorMessages = [];
   var userAgent = req.headers['user-agent'];
   //Which ICE candidates to allow. This is useful for forcing a call to run over TURN, by setting it=relay.
-  var iceTransports = req.query['it'];
+  var ice_transports = req.query['it'];
 
   // Which TURN transport= to allow (i.e., only TURN URLs with transport=<tt>
   // will be used). This is useful for forcing a session to use TURN/TCP, by
   // setting it=relay&tt=tcp.
-  var turnTransports = req.query['tt'];
+  var ice_server_transports = req.query['tt'];
 
   // A HTTP server that will be used to find the right TURN servers to use, as
   // described in http://tools.ietf.org/html/draft-uberti-rtcweb-turn-rest-00.
-  var turnBaseUrl = req.query['ts'];
-  if (!turnBaseUrl) turnBaseUrl = constants.TURN_BASE_URL;
+  var ice_server_base_url = req.query['ts'];
+  if (!ice_server_base_url) ice_server_base_url = constants.ICE_SERVER_BASE_URL;
 
   /*
     Use "audio" and "video" to set the media stream constraints. Defined here:
@@ -267,9 +270,9 @@ function getRoomParameters(req, roomId, clientId, isInitiator) {
    a random id, but we should make this better.
    */
   var username = clientId ? clientId : generateRandom(9);
-  var turnUrl = turnBaseUrl.length  > 0 ? util.format(constants.TURN_URL_TEMPLATE, turnBaseUrl, username, constants.CEOD_KEY) : undefined;
+  var ice_server_url = ice_server_base_url.length  > 0 ? util.format(constants.ICE_SERVER_URL_TEMPLATE, ice_server_base_url, username, constants.CEOD_KEY) : undefined;
 
-  var pcConfig = makePCConfig(iceTransports);
+  var pcConfig = makePCConfig(ice_transports,false);
   var pcConstraints = makePCConstraints(dtls, dscp, ipv6);
   var offerConstraints = { mandatory: {}, optional: [] };
   var mediaConstraints = makeMediaStreamConstraints(audio, video, firefoxFakeDevice);
@@ -287,8 +290,8 @@ function getRoomParameters(req, roomId, clientId, isInitiator) {
     'pc_constraints': JSON.stringify(pcConstraints),
     'offer_constraints': JSON.stringify(offerConstraints),
     'media_constraints': JSON.stringify(mediaConstraints),
-    'turn_url': turnUrl,
-    'turn_transports': turnTransports,
+    'ice_server_url': ice_server_url,
+    'ice_server_transports': ice_transports,
     'include_loopback_js' : includeLoopbackJS,
     'wss_url': wssUrl,
     'wss_post_url': wssPostUrl,
@@ -447,7 +450,7 @@ router.post('/message/:roomId/:clientId', function(req, res, next) {
 
 router.get('/turn', function(req, res, next) {
   console.log(req);
-  res.send({uris:'turn://xiaominfc.com:3478',username:'rtc',password:'rtc'});
+  res.send({urls:['turn://xiaominfc.com:3478?transport=udp','turn://xiaominfc.com:3478?transport=tcp'],username:'rtc',credential:'rtc'});
 });
 
 router.get('/r/:roomId', function(req, res, next) {
