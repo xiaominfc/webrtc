@@ -453,6 +453,11 @@ router.get('/turn', function(req, res, next) {
   res.send({urls:['turn://xiaominfc.com:3478?transport=udp','turn://xiaominfc.com:3478?transport=tcp'],username:'rtc',credential:'rtc'});
 });
 
+router.post('/turn', function(req, res, next) {
+  console.log(req);
+  res.send({urls:['turn://xiaominfc.com:3478?transport=udp','turn://xiaominfc.com:3478?transport=tcp'],username:'rtc',credential:'rtc'});
+});
+
 router.get('/r/:roomId', function(req, res, next) {
   var roomId = req.params.roomId;
   var key = getCacheKeyForRoom(req.headers.host, roomId);
