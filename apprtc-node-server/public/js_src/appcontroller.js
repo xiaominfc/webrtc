@@ -498,19 +498,28 @@ AppController.prototype.toggleMiniVideo_ = function() {
 };
 
 AppController.prototype.hide_ = function(element) {
-  element.classList.add('hidden');
+  if(element) {
+    element.classList.add('hidden');
+  }
 };
 
 AppController.prototype.show_ = function(element) {
-  element.classList.remove('hidden');
+  if(element) {
+    element.classList.remove('hidden');
+  }
 };
 
 AppController.prototype.activate_ = function(element) {
-  element.classList.add('active');
+  if(element) {
+    element.classList.add('active');
+  }
+
 };
 
 AppController.prototype.deactivate_ = function(element) {
-  element.classList.remove('active');
+  if(element) {
+    element.classList.remove('active');
+  }
 };
 
 AppController.prototype.showIcons_ = function() {
