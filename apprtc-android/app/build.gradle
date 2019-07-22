@@ -1,42 +1,29 @@
 apply plugin: 'com.android.application'
-
 android {
-  compileSdkVersion 23
-  buildToolsVersion '25.0.0'
+    compileSdkVersion 28
+    buildToolsVersion "28.0.3"
 
-  sourceSets.main {
-    jniLibs.srcDir 'libs'
-    jni.srcDirs = [] //disable automatic ndk-build call
-  }
-
-
-  defaultConfig {
-    applicationId "com.xiaominfc.apprtc"
-    minSdkVersion 16
-    targetSdkVersion 21
-
-    versionCode 15663
-    versionName "r15663"
-
-//    testApplicationId "org.appspot.apprtc.test"
-//    testInstrumentationRunner "android.test.InstrumentationTestRunner"
-  }
-
-  buildTypes {
-    release {
-      minifyEnabled true
-      proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+    defaultConfig {
+        applicationId "com.xiaominfc.apprtc"
+        minSdkVersion 17
+        targetSdkVersion 28
     }
-  }
 
-  lintOptions {
-    abortOnError false
-  }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+        //sourceCompatibility = '1.8'
+    }
+    dependencies {
+        implementation files('src/main/libs/autobanh.jar')
+        implementation 'org.webrtc:google-webrtc:1.0.+'
+        implementation 'com.android.support:support-annotations:23.0.0'
+    }
 }
 
-dependencies {
-  compile files('libs/audio_device_java.jar')
-  compile files('libs/autobanh.jar')
-  compile files('libs/base_java.jar')
-  compile files('libs/libjingle_peerconnection.jar')
-}

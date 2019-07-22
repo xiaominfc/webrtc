@@ -10,12 +10,18 @@
 
 package com.xiaominfc.apprtc;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.KeyEvent;
@@ -31,12 +37,11 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-
 import java.util.ArrayList;
 import java.util.Random;
+import org.json.JSONArray;
+import org.json.JSONException;
+import com.xiaominfc.apprtc.R;
 
 /**
  * Handles the initial setup where the user selects which room to join.
@@ -44,22 +49,46 @@ import java.util.Random;
 public class ConnectActivity extends Activity {
   private static final String TAG = "ConnectActivity";
   private static final int CONNECTION_REQUEST = 1;
+  private static final int PERMISSION_REQUEST = 2;
   private static final int REMOVE_FAVORITE_INDEX = 0;
-  private static boolean commandLineRun = false;
+  private static boolean commandLineRun;
 
-  private ImageButton connectButton;
   private ImageButton addFavoriteButton;
   private EditText roomEditText;
   private ListView roomListView;
+  private SharedPreferences sharedPref;
+  private String keyprefResolution;
+  private String keyprefFps;
+  private String keyprefVideoBitrateType;
+  private String keyprefVideoBitrateValue;
+  private String keyprefAudioBitrateType;
+  private String keyprefAudioBitrateValue;
+  private String keyprefRoomServerUrl;
+  private String keyprefRoom;
+  private String keyprefRoomList;
   private ArrayList<String> roomList;
   private ArrayAdapter<String> adapter;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    AppRTCManager.getInstance().init(this);
+
+    // Get setting keys.
+    PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
+    sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+    keyprefResolution = getString(R.string.pref_resolution_key);
+    keyprefFps = getString(R.string.pref_fps_key);
+    keyprefVideoBitrateType = getString(R.string.pref_maxvideobitrate_key);
+    keyprefVideoBitrateValue = getString(R.string.pref_maxvideobitratevalue_key);
+    keyprefAudioBitrateType = getString(R.string.pref_startaudiobitrate_key);
+    keyprefAudioBitrateValue = getString(R.string.pref_startaudiobitratevalue_key);
+    keyprefRoomServerUrl = getString(R.string.pref_room_server_url_key);
+    keyprefRoom = getString(R.string.pref_room_key);
+    keyprefRoomList = getString(R.string.pref_room_list_key);
+
     setContentView(R.layout.activity_connect);
-    roomEditText = (EditText) findViewById(R.id.room_edittext);
+
+    roomEditText = findViewById(R.id.room_edittext);
     roomEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
       @Override
       public boolean onEditorAction(TextView textView, int i, KeyEvent keyEvent) {
@@ -72,25 +101,16 @@ public class ConnectActivity extends Activity {
     });
     roomEditText.requestFocus();
 
-    roomListView = (ListView) findViewById(R.id.room_listview);
+    roomListView = findViewById(R.id.room_listview);
     roomListView.setEmptyView(findViewById(android.R.id.empty));
     roomListView.setOnItemClickListener(roomListClickListener);
     registerForContextMenu(roomListView);
-    connectButton = (ImageButton) findViewById(R.id.connect_button);
+    ImageButton connectButton = findViewById(R.id.connect_button);
     connectButton.setOnClickListener(connectListener);
-    addFavoriteButton = (ImageButton) findViewById(R.id.add_favorite_button);
+    addFavoriteButton = findViewById(R.id.add_favorite_button);
     addFavoriteButton.setOnClickListener(addFavoriteListener);
 
-    // If an implicit VIEW intent is launching the app, go directly to that URL.
-    final Intent intent = getIntent();
-    if ("android.intent.action.VIEW".equals(intent.getAction()) && !commandLineRun) {
-      boolean loopback = intent.getBooleanExtra(CallActivity.EXTRA_LOOPBACK, false);
-      int runTimeMs = intent.getIntExtra(CallActivity.EXTRA_RUNTIME, 0);
-      boolean useValuesFromIntent =
-          intent.getBooleanExtra(CallActivity.EXTRA_USE_VALUES_FROM_INTENT, false);
-      String room = AppRTCManager.getInstance().getRoom();
-      connectToRoom(room, true, loopback, useValuesFromIntent, runTimeMs);
-    }
+    requestPermissions();
   }
 
   @Override
@@ -146,22 +166,19 @@ public class ConnectActivity extends Activity {
     super.onPause();
     String room = roomEditText.getText().toString();
     String roomListJson = new JSONArray(roomList).toString();
-
-    AppRTCManager.getInstance().putRoomAndRoomList(room,roomListJson);
-
-//    SharedPreferences.Editor editor = sharedPref.edit();
-//    editor.putString(keyprefRoom, room);
-//    editor.putString(keyprefRoomList, roomListJson);
-//    editor.commit();
+    SharedPreferences.Editor editor = sharedPref.edit();
+    editor.putString(keyprefRoom, room);
+    editor.putString(keyprefRoomList, roomListJson);
+    editor.commit();
   }
 
   @Override
   public void onResume() {
     super.onResume();
-    String room = AppRTCManager.getInstance().getRoom();
+    String room = sharedPref.getString(keyprefRoom, "");
     roomEditText.setText(room);
-    roomList = new ArrayList<String>();
-    String roomListJson = AppRTCManager.getInstance().getRoomList();
+    roomList = new ArrayList<>();
+    String roomListJson = sharedPref.getString(keyprefRoomList, null);
     if (roomListJson != null) {
       try {
         JSONArray jsonArray = new JSONArray(roomListJson);
@@ -172,7 +189,7 @@ public class ConnectActivity extends Activity {
         Log.e(TAG, "Failed to load room list: " + e.toString());
       }
     }
-    adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, roomList);
+    adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, roomList);
     roomListView.setAdapter(adapter);
     if (adapter.getCount() > 0) {
       roomListView.requestFocus();
@@ -190,6 +207,95 @@ public class ConnectActivity extends Activity {
     }
   }
 
+  @Override
+  public void onRequestPermissionsResult(
+      int requestCode, String[] permissions, int[] grantResults) {
+    if (requestCode == PERMISSION_REQUEST) {
+      String[] missingPermissions = getMissingPermissions();
+      if (missingPermissions.length != 0) {
+        // User didn't grant all the permissions. Warn that the application might not work
+        // correctly.
+        new AlertDialog.Builder(this)
+            .setMessage(R.string.missing_permissions_try_again)
+            .setPositiveButton(R.string.yes,
+                (dialog, id) -> {
+                  // User wants to try giving the permissions again.
+                  dialog.cancel();
+                  requestPermissions();
+                })
+            .setNegativeButton(R.string.no,
+                (dialog, id) -> {
+                  // User doesn't want to give the permissions.
+                  dialog.cancel();
+                  onPermissionsGranted();
+                })
+            .show();
+      } else {
+        // All permissions granted.
+        onPermissionsGranted();
+      }
+    }
+  }
+
+  private void onPermissionsGranted() {
+    // If an implicit VIEW intent is launching the app, go directly to that URL.
+    final Intent intent = getIntent();
+    if ("android.intent.action.VIEW".equals(intent.getAction()) && !commandLineRun) {
+      boolean loopback = intent.getBooleanExtra(CallActivity.EXTRA_LOOPBACK, false);
+      int runTimeMs = intent.getIntExtra(CallActivity.EXTRA_RUNTIME, 0);
+      boolean useValuesFromIntent =
+          intent.getBooleanExtra(CallActivity.EXTRA_USE_VALUES_FROM_INTENT, false);
+      String room = sharedPref.getString(keyprefRoom, "");
+      connectToRoom(room, true, loopback, useValuesFromIntent, runTimeMs);
+    }
+  }
+
+  @TargetApi(Build.VERSION_CODES.M)
+  private void requestPermissions() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+      // Dynamic permissions are not required before Android M.
+      onPermissionsGranted();
+      return;
+    }
+
+    String[] missingPermissions = getMissingPermissions();
+    if (missingPermissions.length != 0) {
+      requestPermissions(missingPermissions, PERMISSION_REQUEST);
+    } else {
+      onPermissionsGranted();
+    }
+  }
+
+  @TargetApi(Build.VERSION_CODES.M)
+  private String[] getMissingPermissions() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+      return new String[0];
+    }
+
+    PackageInfo info;
+    try {
+      info = getPackageManager().getPackageInfo(getPackageName(), PackageManager.GET_PERMISSIONS);
+    } catch (PackageManager.NameNotFoundException e) {
+      Log.w(TAG, "Failed to retrieve permissions.");
+      return new String[0];
+    }
+
+    if (info.requestedPermissions == null) {
+      Log.w(TAG, "No requested permissions.");
+      return new String[0];
+    }
+
+    ArrayList<String> missingPermissions = new ArrayList<>();
+    for (int i = 0; i < info.requestedPermissions.length; i++) {
+      if ((info.requestedPermissionsFlags[i] & PackageInfo.REQUESTED_PERMISSION_GRANTED) == 0) {
+        missingPermissions.add(info.requestedPermissions[i]);
+      }
+    }
+    Log.d(TAG, "Missing permissions: " + missingPermissions);
+
+    return missingPermissions.toArray(new String[missingPermissions.size()]);
+  }
+
   /**
    * Get a value from the shared preference or from the intent, if it does not
    * exist the default is used.
@@ -205,7 +311,7 @@ public class ConnectActivity extends Activity {
       return defaultValue;
     } else {
       String attributeName = getString(attributeId);
-      return AppRTCManager.getInstance().getString(attributeName, defaultValue);
+      return sharedPref.getString(attributeName, defaultValue);
     }
   }
 
@@ -215,12 +321,12 @@ public class ConnectActivity extends Activity {
    */
   private boolean sharedPrefGetBoolean(
       int attributeId, String intentName, int defaultId, boolean useFromIntent) {
-    boolean defaultValue = Boolean.valueOf(getString(defaultId));
+    boolean defaultValue = Boolean.parseBoolean(getString(defaultId));
     if (useFromIntent) {
       return getIntent().getBooleanExtra(intentName, defaultValue);
     } else {
       String attributeName = getString(attributeId);
-      return AppRTCManager.getInstance().getBoolean(attributeName, defaultValue);
+      return sharedPref.getBoolean(attributeName, defaultValue);
     }
   }
 
@@ -236,7 +342,7 @@ public class ConnectActivity extends Activity {
       return getIntent().getIntExtra(intentName, defaultValue);
     } else {
       String attributeName = getString(attributeId);
-      String value = AppRTCManager.getInstance().getString(attributeName, defaultString);
+      String value = sharedPref.getString(attributeName, defaultString);
       try {
         return Integer.parseInt(value);
       } catch (NumberFormatException e) {
@@ -246,16 +352,18 @@ public class ConnectActivity extends Activity {
     }
   }
 
+  @SuppressWarnings("StringSplitter")
   private void connectToRoom(String roomId, boolean commandLineRun, boolean loopback,
       boolean useValuesFromIntent, int runTimeMs) {
-    this.commandLineRun = commandLineRun;
+    ConnectActivity.commandLineRun = commandLineRun;
 
     // roomId is random for loopback.
     if (loopback) {
       roomId = Integer.toString((new Random()).nextInt(100000000));
     }
 
-    String roomUrl = AppRTCManager.getInstance().getRoomServerUrl();
+    String roomUrl = sharedPref.getString(
+        keyprefRoomServerUrl, getString(R.string.pref_room_server_url_default));
 
     // Video call enabled flag.
     boolean videoCallEnabled = sharedPrefGetBoolean(R.string.pref_videocall_key,
@@ -293,9 +401,13 @@ public class ConnectActivity extends Activity {
         CallActivity.EXTRA_NOAUDIOPROCESSING_ENABLED, R.string.pref_noaudioprocessing_default,
         useValuesFromIntent);
 
-    // Check Disable Audio Processing flag.
     boolean aecDump = sharedPrefGetBoolean(R.string.pref_aecdump_key,
         CallActivity.EXTRA_AECDUMP_ENABLED, R.string.pref_aecdump_default, useValuesFromIntent);
+
+    boolean saveInputAudioToFile =
+        sharedPrefGetBoolean(R.string.pref_enable_save_input_audio_to_file_key,
+            CallActivity.EXTRA_SAVE_INPUT_AUDIO_TO_FILE_ENABLED,
+            R.string.pref_enable_save_input_audio_to_file_default, useValuesFromIntent);
 
     // Check OpenSL ES enabled flag.
     boolean useOpenSLES = sharedPrefGetBoolean(R.string.pref_opensles_key,
@@ -316,11 +428,6 @@ public class ConnectActivity extends Activity {
         CallActivity.EXTRA_DISABLE_BUILT_IN_NS, R.string.pref_disable_built_in_ns_default,
         useValuesFromIntent);
 
-    // Check Enable level control.
-    boolean enableLevelControl = sharedPrefGetBoolean(R.string.pref_enable_level_control_key,
-        CallActivity.EXTRA_ENABLE_LEVEL_CONTROL, R.string.pref_enable_level_control_key,
-        useValuesFromIntent);
-
     // Check Disable gain control
     boolean disableWebRtcAGCAndHPF = sharedPrefGetBoolean(
         R.string.pref_disable_webrtc_agc_and_hpf_key, CallActivity.EXTRA_DISABLE_WEBRTC_AGC_AND_HPF,
@@ -334,8 +441,8 @@ public class ConnectActivity extends Activity {
       videoHeight = getIntent().getIntExtra(CallActivity.EXTRA_VIDEO_HEIGHT, 0);
     }
     if (videoWidth == 0 && videoHeight == 0) {
-      String resolution = AppRTCManager.getInstance().getResolution();
-
+      String resolution =
+          sharedPref.getString(keyprefResolution, getString(R.string.pref_resolution_default));
       String[] dimensions = resolution.split("[ x]+");
       if (dimensions.length == 2) {
         try {
@@ -355,7 +462,16 @@ public class ConnectActivity extends Activity {
       cameraFps = getIntent().getIntExtra(CallActivity.EXTRA_VIDEO_FPS, 0);
     }
     if (cameraFps == 0) {
-      cameraFps = AppRTCManager.getInstance().getCameraFps();
+      String fps = sharedPref.getString(keyprefFps, getString(R.string.pref_fps_default));
+      String[] fpsValues = fps.split("[ x]+");
+      if (fpsValues.length == 2) {
+        try {
+          cameraFps = Integer.parseInt(fpsValues[0]);
+        } catch (NumberFormatException e) {
+          cameraFps = 0;
+          Log.e(TAG, "Wrong camera fps setting: " + fps);
+        }
+      }
     }
 
     // Check capture quality slider flag.
@@ -369,7 +485,13 @@ public class ConnectActivity extends Activity {
       videoStartBitrate = getIntent().getIntExtra(CallActivity.EXTRA_VIDEO_BITRATE, 0);
     }
     if (videoStartBitrate == 0) {
-      videoStartBitrate = AppRTCManager.getInstance().getVideoStartBitrate();
+      String bitrateTypeDefault = getString(R.string.pref_maxvideobitrate_default);
+      String bitrateType = sharedPref.getString(keyprefVideoBitrateType, bitrateTypeDefault);
+      if (!bitrateType.equals(bitrateTypeDefault)) {
+        String bitrateValue = sharedPref.getString(
+            keyprefVideoBitrateValue, getString(R.string.pref_maxvideobitratevalue_default));
+        videoStartBitrate = Integer.parseInt(bitrateValue);
+      }
     }
 
     int audioStartBitrate = 0;
@@ -377,7 +499,13 @@ public class ConnectActivity extends Activity {
       audioStartBitrate = getIntent().getIntExtra(CallActivity.EXTRA_AUDIO_BITRATE, 0);
     }
     if (audioStartBitrate == 0) {
-      audioStartBitrate = AppRTCManager.getInstance().getAudioStartBitrate();
+      String bitrateTypeDefault = getString(R.string.pref_startaudiobitrate_default);
+      String bitrateType = sharedPref.getString(keyprefAudioBitrateType, bitrateTypeDefault);
+      if (!bitrateType.equals(bitrateTypeDefault)) {
+        String bitrateValue = sharedPref.getString(
+            keyprefAudioBitrateValue, getString(R.string.pref_startaudiobitratevalue_default));
+        audioStartBitrate = Integer.parseInt(bitrateValue);
+      }
     }
 
     // Check statistics display option.
@@ -386,6 +514,11 @@ public class ConnectActivity extends Activity {
 
     boolean tracing = sharedPrefGetBoolean(R.string.pref_tracing_key, CallActivity.EXTRA_TRACING,
         R.string.pref_tracing_default, useValuesFromIntent);
+
+    // Check Enable RtcEventLog.
+    boolean rtcEventLogEnabled = sharedPrefGetBoolean(R.string.pref_enable_rtceventlog_key,
+        CallActivity.EXTRA_ENABLE_RTCEVENTLOG, R.string.pref_enable_rtceventlog_default,
+        useValuesFromIntent);
 
     // Get datachannel options
     boolean dataChannelEnabled = sharedPrefGetBoolean(R.string.pref_enable_datachannel_key,
@@ -428,19 +561,19 @@ public class ConnectActivity extends Activity {
       intent.putExtra(CallActivity.EXTRA_FLEXFEC_ENABLED, flexfecEnabled);
       intent.putExtra(CallActivity.EXTRA_NOAUDIOPROCESSING_ENABLED, noAudioProcessing);
       intent.putExtra(CallActivity.EXTRA_AECDUMP_ENABLED, aecDump);
+      intent.putExtra(CallActivity.EXTRA_SAVE_INPUT_AUDIO_TO_FILE_ENABLED, saveInputAudioToFile);
       intent.putExtra(CallActivity.EXTRA_OPENSLES_ENABLED, useOpenSLES);
       intent.putExtra(CallActivity.EXTRA_DISABLE_BUILT_IN_AEC, disableBuiltInAEC);
       intent.putExtra(CallActivity.EXTRA_DISABLE_BUILT_IN_AGC, disableBuiltInAGC);
       intent.putExtra(CallActivity.EXTRA_DISABLE_BUILT_IN_NS, disableBuiltInNS);
-      intent.putExtra(CallActivity.EXTRA_ENABLE_LEVEL_CONTROL, enableLevelControl);
       intent.putExtra(CallActivity.EXTRA_DISABLE_WEBRTC_AGC_AND_HPF, disableWebRtcAGCAndHPF);
       intent.putExtra(CallActivity.EXTRA_AUDIO_BITRATE, audioStartBitrate);
       intent.putExtra(CallActivity.EXTRA_AUDIOCODEC, audioCodec);
       intent.putExtra(CallActivity.EXTRA_DISPLAY_HUD, displayHud);
       intent.putExtra(CallActivity.EXTRA_TRACING, tracing);
+      intent.putExtra(CallActivity.EXTRA_ENABLE_RTCEVENTLOG, rtcEventLogEnabled);
       intent.putExtra(CallActivity.EXTRA_CMDLINE, commandLineRun);
       intent.putExtra(CallActivity.EXTRA_RUNTIME, runTimeMs);
-
       intent.putExtra(CallActivity.EXTRA_DATA_CHANNEL_ENABLED, dataChannelEnabled);
 
       if (dataChannelEnabled) {
@@ -493,6 +626,7 @@ public class ConnectActivity extends Activity {
         .setCancelable(false)
         .setNeutralButton(R.string.ok,
             new DialogInterface.OnClickListener() {
+              @Override
               public void onClick(DialogInterface dialog, int id) {
                 dialog.cancel();
               }

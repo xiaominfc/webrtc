@@ -12,12 +12,12 @@ package com.xiaominfc.apprtc;
 
 import android.widget.SeekBar;
 import android.widget.TextView;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import org.webrtc.CameraEnumerationAndroid.CaptureFormat;
+import com.xiaominfc.apprtc.R;
 
 /**
  * Control capture format based on a seekbar listener.
@@ -31,10 +31,10 @@ public class CaptureQualityController implements SeekBar.OnSeekBarChangeListener
   private static final int FRAMERATE_THRESHOLD = 15;
   private TextView captureFormatText;
   private CallFragment.OnCallEvents callEvents;
-  private int width = 0;
-  private int height = 0;
-  private int framerate = 0;
-  private double targetBandwidth = 0;
+  private int width;
+  private int height;
+  private int framerate;
+  private double targetBandwidth;
 
   public CaptureQualityController(
       TextView captureFormatText, CallFragment.OnCallEvents callEvents) {
@@ -48,7 +48,7 @@ public class CaptureQualityController implements SeekBar.OnSeekBarChangeListener
       int firstFps = calculateFramerate(targetBandwidth, first);
       int secondFps = calculateFramerate(targetBandwidth, second);
 
-      if (firstFps >= FRAMERATE_THRESHOLD && secondFps >= FRAMERATE_THRESHOLD
+      if ((firstFps >= FRAMERATE_THRESHOLD && secondFps >= FRAMERATE_THRESHOLD)
           || firstFps == secondFps) {
         // Compare resolution.
         return first.width * first.height - second.width * second.height;

@@ -13,6 +13,8 @@ package com.xiaominfc.apprtc;
 import android.os.Bundle;
 import android.preference.PreferenceFragment;
 
+import com.xiaominfc.apprtc.R;
+
 /**
  * Settings fragment for AppRTC.
  */

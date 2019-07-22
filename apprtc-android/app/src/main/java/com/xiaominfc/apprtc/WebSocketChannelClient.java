@@ -10,22 +10,22 @@
 
 package com.xiaominfc.apprtc;
 
-import com.xiaominfc.apprtc.util.AsyncHttpURLConnection;
-import com.xiaominfc.apprtc.util.AsyncHttpURLConnection.AsyncHttpEvents;
-
 import android.os.Handler;
+import android.support.annotation.Nullable;
 import android.util.Log;
+
+import com.xiaominfc.apprtc.util.AsyncHttpURLConnection;
 
 import de.tavendo.autobahn.WebSocket.WebSocketConnectionObserver;
 import de.tavendo.autobahn.WebSocketConnection;
 import de.tavendo.autobahn.WebSocketException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.LinkedList;
 
 /**
  * WebSocket client implementation.
@@ -34,24 +34,27 @@ import java.util.LinkedList;
  * passed in a constructor, otherwise exception will be thrown.
  * All events are dispatched on the same thread.
  */
-
 public class WebSocketChannelClient {
   private static final String TAG = "WSChannelRTCClient";
   private static final int CLOSE_TIMEOUT = 1000;
   private final WebSocketChannelEvents events;
   private final Handler handler;
   private WebSocketConnection ws;
-  private WebSocketObserver wsObserver;
   private String wsServerUrl;
   private String postServerUrl;
+  @Nullable
   private String roomID;
+  @Nullable
   private String clientID;
   private WebSocketConnectionState state;
+  // Do not remove this member variable. If this is removed, the observer gets garbage collected and
+  // this causes test breakages.
+  private WebSocketObserver wsObserver;
   private final Object closeEventLock = new Object();
   private boolean closeEvent;
   // WebSocket send queue. Messages are added to the queue when WebSocket
   // client is not registered and are consumed in register() call.
-  private final LinkedList<String> wsSendQueue;
+  private final List<String> wsSendQueue = new ArrayList<>();
 
   /**
    * Possible WebSocket connection states.
@@ -73,7 +76,6 @@ public class WebSocketChannelClient {
     this.events = events;
     roomID = null;
     clientID = null;
-    wsSendQueue = new LinkedList<String>();
     state = WebSocketConnectionState.NEW;
   }
 
@@ -217,7 +219,7 @@ public class WebSocketChannelClient {
     String postUrl = postServerUrl + "/" + roomID + "/" + clientID;
     Log.d(TAG, "WS " + method + " : " + postUrl + " : " + message);
     AsyncHttpURLConnection httpConnection =
-        new AsyncHttpURLConnection(method, postUrl, message, new AsyncHttpEvents() {
+        new AsyncHttpURLConnection(method, postUrl, message, new AsyncHttpURLConnection.AsyncHttpEvents() {
           @Override
           public void onHttpError(String errorMessage) {
             reportError("WS " + method + " error: " + errorMessage);
