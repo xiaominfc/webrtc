@@ -113,7 +113,7 @@ body
         peerConnectionConfig: !{pc_config},
         peerConnectionConstraints: !{pc_constraints},
         iceServerRequestUrl: 'https://apprtc.xiaominfc.com/turn',
-        iceServerTransports: '{{ ice_server_transports }}',
+        iceServerTransports: 'udp',
         wssUrl: '!{wss_url}',
         wssPostUrl: '!{wss_post_url}',
         bypassJoinConfirmation: #{bypass_join_confirmation},
