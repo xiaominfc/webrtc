@@ -381,6 +381,11 @@ router.get('/', function(req, res, next) {
   res.render("index_template", params);
 });
 
+router.get('/params',function(req,res,next) {
+  var params = getRoomParameters(req, null, null, null);
+  res.send(params);
+});
+
 router.post('/join/:roomId', function(req, res, next) {
   var roomId = req.params.roomId;
   var clientId = generateRandom(8);
