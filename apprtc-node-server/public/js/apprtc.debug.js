@@ -406,7 +406,7 @@ AppController.prototype.iconEventSetup_ = function() {
   }.bind(this);
 };
 AppController.prototype.loadUrlParams_ = function() {
-  var DEFAULT_VIDEO_CODEC = "VP9";
+  var DEFAULT_VIDEO_CODEC = "VP8";
   var urlParams = queryStringToDictionary(window.location.search);
   this.loadingParams_.audioSendBitrate = urlParams["asbr"];
   this.loadingParams_.audioSendCodec = urlParams["asc"];

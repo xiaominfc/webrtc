@@ -559,7 +559,7 @@ AppController.prototype.loadUrlParams_ = function() {
   // Suppressing eslint warns about using urlParams['KEY'] instead of
   // urlParams.KEY, since we'd like to use string literals to avoid the Closure
   // compiler renaming the properties.
-  var DEFAULT_VIDEO_CODEC = 'VP9';
+  var DEFAULT_VIDEO_CODEC = 'VP8';
   var urlParams = queryStringToDictionary(window.location.search);
   this.loadingParams_.audioSendBitrate = urlParams['asbr'];
   this.loadingParams_.audioSendCodec = urlParams['asc'];
