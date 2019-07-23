@@ -429,6 +429,15 @@ router.post('/message/:roomId/:clientId', function(req, res, next) {
       //  TODO(tkchin): consider async fetch here.
       console.log('Forwarding message to collider from room ' + roomId + ' client ' + clientId);
       var wssParams = getWSSParameters(req);
+
+      var hostparts = wssParams.host.split(":");
+      var host = wssParams.host;
+      var port = 443;
+      if(hostparts.length > 1){
+        host = hostparts[0];
+        port = parseInt(hostparts[1]);
+      }
+      
       var postOptions = {
         //host: 'apprtc-ws.webrtc.org',//wssParams.host,
         host: wssParams.host,
