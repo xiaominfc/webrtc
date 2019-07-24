@@ -1,16 +1,16 @@
 //
 //  main.m
-//  AppRTC
+//  apprtc
 //
-//  Created by Kelly Chu on 3/7/15.
-//  Copyright (c) 2015 ISBX. All rights reserved.
+//  Created by xiaominfc on 2019/7/22.
+//  Copyright © 2019 xiaominfc. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
-#import "AppDelegate.h"
+#import "ARDAppDelegate.h"
 
 int main(int argc, char * argv[]) {
     @autoreleasepool {
-        return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
+        return UIApplicationMain(argc, argv, nil, NSStringFromClass([ARDAppDelegate class]));
     }
 }
