@@ -180,10 +180,6 @@ function getRoomParameters(req, roomId, clientId, isInitiator) {
   //Which ICE candidates to allow. This is useful for forcing a call to run over TURN, by setting it=relay.
   var ice_transports = req.query['it'];
 
-  if(!ice_transports) {
-    ice_transports = 'udp';
-  }
-
   // Which TURN transport= to allow (i.e., only TURN URLs with transport=<tt>
   // will be used). This is useful for forcing a session to use TURN/TCP, by
   // setting it=relay&tt=tcp.
@@ -286,7 +282,9 @@ function getRoomParameters(req, roomId, clientId, isInitiator) {
   var wssPostUrl = wssParams.wssPostUrl;
   var bypassJoinConfirmation = false; //TODO: add BYPASS_JOIN_CONFIRMATION flag in environment variable
 
-
+  if(!ice_transports) {
+    ice_transports = 'udp';
+  }
 
   var params = {
     'error_messages': errorMessages,
