@@ -5,9 +5,9 @@ android ios chrome之间使用webrtc进行语音视频通讯 bug还有很多 API
 
 ### 安装turnserver
 
-(https://github.com/coturn/coturn/wiki/CoturnConfig)[https://github.com/coturn/coturn/wiki/CoturnConfig]
+[https://github.com/coturn/coturn/wiki/CoturnConfig](https://github.com/coturn/coturn/wiki/CoturnConfig)
 or
-(https://github.com/pion/turn)[https://github.com/pion/turn]
+[https://github.com/pion/turn](https://github.com/pion/turn)
 
 
 turnserver可以手动安装 然后修改apprtc-node-server 下routes/index.js
@@ -76,6 +76,14 @@ node ./bin/www
 
 ### 在线demo
 [https://apprtc.xiaominfc.com](https://apprtc.xiaominfc.com)
+
+
+
+### flutter plugin and demo
+
+[https://github.com/xiaominfc/flutter_apprtc](https://github.com/xiaominfc/flutter_apprtc)
+
+
 
 ### 欢迎联系讨论学习 
 qq:793101503
