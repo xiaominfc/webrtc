@@ -378,10 +378,19 @@ function saveMessageFromClient(host, roomId, clientId, message, callback) {
   });
 }
 
+
+
 router.get('/', function (req, res, next) {
   // Parse out parameters from request.
   var params = getRoomParameters(req, null, null, null);
   res.render("index_template", params);
+});
+
+router.get('/status',function (req, res, next){
+  res.send({
+    result: 'SUCCESS',
+    rooms: rooms.roomMap
+  });
 });
 
 router.get('/params', function (req, res, next) {
