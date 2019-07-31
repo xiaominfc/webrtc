@@ -27,7 +27,7 @@ var constants = {
   RESPONSE_DUPLICATE_CLIENT: 'DUPLICATE_CLIENT',
   RESPONSE_SUCCESS: 'SUCCESS',
   RESPONSE_INVALID_REQUEST: 'INVALID_REQUEST',
-  ICE_SERVERS: { iceServers: [{ urls: ['turn:apprtc.xiaominfc.com:3478', 'turn:apprtc.xiaominfc.com:3478'], username: 'rtc', credential: 'rtc' }, { urls: ['stun:apprtc.xiaominfc.com:3478'] }] },
+  ICE_SERVERS: { iceServers: [{ urls: ['turn:apprtc.xiaominfc.com:3478', 'turn:apprtc.xiaominfc.com:3478'], username: 'rtc', credential: 'rtc' }, { urls: ['stun:apprtc.xiaominfc.com:3478','stun:stun.l.google.com:19302'] }] },
   //ICE_SERVER_OVERRIDE : null
 };
 
