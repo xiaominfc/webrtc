@@ -100,6 +100,9 @@ const Float64 kFramerateLimit = 30.0;
   for (AVFrameRateRange *fpsRange in format.videoSupportedFrameRateRanges) {
     maxSupportedFramerate = fmax(maxSupportedFramerate, fpsRange.maxFrameRate);
   }
+  if(maxSupportedFramerate == 0) {
+    return kFramerateLimit;
+  }
   return fmin(maxSupportedFramerate, kFramerateLimit);
 }
 

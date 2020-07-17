@@ -23,6 +23,8 @@
 @property(nonatomic, strong) RTCVideoTrack *remoteVideoTrack;
 @property(nonatomic, readonly) ARDVideoCallView *videoCallView;
 @property(nonatomic, assign) AVAudioSessionPortOverride portOverride;
+@property(nonatomic, strong) NSString *callTitle;
+
 @end
 
 @implementation ARDVideoCallViewController {
@@ -36,14 +38,16 @@
 @synthesize remoteVideoTrack = _remoteVideoTrack;
 @synthesize delegate = _delegate;
 @synthesize portOverride = _portOverride;
+@synthesize callTitle = _callTitle;
 
 - (instancetype)initForRoom:(NSString *)room
                  isLoopback:(BOOL)isLoopback
                    delegate:(id<ARDVideoCallViewControllerDelegate>)delegate {
+    
   if (self = [super init]) {
     ARDSettingsModel *settingsModel = [[ARDSettingsModel alloc] init];
     _delegate = delegate;
-
+    _callTitle = room;
     _client = [[ARDAppClient alloc] initWithDelegate:self];
     [_client connectToRoomWithId:room settings:settingsModel isLoopback:isLoopback];
   }
@@ -55,6 +59,7 @@
   _videoCallView.delegate = self;
   _videoCallView.statusLabel.text =
       [self statusTextForState:RTCIceConnectionStateNew];
+  _videoCallView.titleLabel.text = _callTitle;
   self.view = _videoCallView;
 
   RTCAudioSession *session = [RTCAudioSession sharedInstance];
@@ -119,6 +124,7 @@
 
 - (void)appClient:(ARDAppClient *)client
     didReceiveRemoteVideoTrack:(RTCVideoTrack *)remoteVideoTrack {
+  NSLog(@"didReceiveRemoteVideoTrack:");
   self.remoteVideoTrack = remoteVideoTrack;
   __weak ARDVideoCallViewController *weakSelf = self;
   dispatch_async(dispatch_get_main_queue(), ^{

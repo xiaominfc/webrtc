@@ -162,6 +162,8 @@ public class RoomParametersFetcher {
   // off the main thread!
   private List<PeerConnection.IceServer> requestTurnServers(String url)
       throws IOException, JSONException {
+
+    //url = "https://apprtc.xiaominfc.com/turnserver";
     List<PeerConnection.IceServer> turnServers = new ArrayList<>();
     Log.d(TAG, "Request TURN from: " + url);
     HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();

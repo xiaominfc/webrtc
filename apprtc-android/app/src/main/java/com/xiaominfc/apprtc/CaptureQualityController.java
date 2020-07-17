@@ -17,7 +17,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import org.webrtc.CameraEnumerationAndroid.CaptureFormat;
-import com.xiaominfc.apprtc.R;
+
 
 /**
  * Control capture format based on a seekbar listener.

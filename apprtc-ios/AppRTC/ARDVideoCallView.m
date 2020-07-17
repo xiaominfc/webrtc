@@ -17,6 +17,8 @@
 #import <WebRTC/RTCMTLVideoView.h>
 #endif
 
+#import <WebRTC/WebRTC.h>
+
 #import "UIImage+ARDUtilities.h"
 
 static CGFloat const kButtonPadding = 16;
@@ -36,6 +38,7 @@ static CGFloat const kStatusBarHeight = 20;
 }
 
 @synthesize statusLabel = _statusLabel;
+@synthesize titleLabel = _titleLabel;
 @synthesize localVideoView = _localVideoView;
 @synthesize remoteVideoView = _remoteVideoView;
 @synthesize statsView = _statsView;
@@ -44,6 +47,7 @@ static CGFloat const kStatusBarHeight = 20;
 - (instancetype)initWithFrame:(CGRect)frame {
   if (self = [super initWithFrame:frame]) {
 
+//    _remoteVideoView = [[RTCMTLVideoView alloc] initWithFrame:CGRectZero];
 #if defined(RTC_SUPPORTS_METAL)
     _remoteVideoView = [[RTCMTLVideoView alloc] initWithFrame:CGRectZero];
 #else
@@ -95,7 +99,11 @@ static CGFloat const kStatusBarHeight = 20;
                       action:@selector(onHangup:)
             forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:_hangupButton];
-
+      
+    _titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    _titleLabel.font = [UIFont fontWithName:@"Roboto" size:16];
+    _titleLabel.textColor = [UIColor whiteColor];
+    [self addSubview:_titleLabel];
     _statusLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _statusLabel.font = [UIFont fontWithName:@"Roboto" size:16];
     _statusLabel.textColor = [UIColor whiteColor];
@@ -173,6 +181,8 @@ static CGFloat const kStatusBarHeight = 20;
   [_statusLabel sizeToFit];
   _statusLabel.center =
       CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
+  [_titleLabel sizeToFit];
+  _titleLabel.center =CGPointMake(CGRectGetMidX(bounds), 40);
 }
 
 #pragma mark - RTCVideoViewDelegate

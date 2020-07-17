@@ -42,6 +42,8 @@ static NSInteger kARDTURNClientErrorBadResponse = -1;
       }
       NSDictionary *responseDict = [NSDictionary dictionaryWithJSONData:data];
       NSString *iceServerUrl = responseDict[@"ice_server_url"];
+      //iceServerUrl = @"https://apprtc.xiaominfc.com/turnserver";
+      
       [self makeTurnServerRequestToURL:[NSURL URLWithString:iceServerUrl]
                  WithCompletionHandler:completionHandler];
     }];

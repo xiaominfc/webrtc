@@ -28,6 +28,7 @@
     _statsLabel.minimumScaleFactor = 0.6;
     _statsLabel.textColor = [UIColor greenColor];
     [self addSubview:_statsLabel];
+    
     self.backgroundColor = [UIColor colorWithWhite:0 alpha:.6];
     _statsBuilder = [[ARDStatsBuilder alloc] init];
   }

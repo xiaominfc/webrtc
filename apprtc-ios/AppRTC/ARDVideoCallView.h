@@ -37,6 +37,7 @@
 @interface ARDVideoCallView : UIView
 
 @property(nonatomic, readonly) UILabel *statusLabel;
+@property(nonatomic, readonly) UILabel *titleLabel;
 @property(nonatomic, readonly) RTCCameraPreviewView *localVideoView;
 @property(nonatomic, readonly) __kindof UIView<RTCVideoRenderer> *remoteVideoView;
 @property(nonatomic, readonly) ARDStatsView *statsView;

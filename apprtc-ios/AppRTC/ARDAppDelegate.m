@@ -39,14 +39,15 @@
       [[UINavigationController alloc] initWithRootViewController:viewController];
   root.navigationBar.translucent = NO;
   _window.rootViewController = root;
+  
 
-//#if defined(NDEBUG)
+#if defined(NDEBUG)
   // In debug builds the default level is LS_INFO and in non-debug builds it is
   // disabled. Continue to log to console in non-debug builds, but only
   // warnings and errors.
   RTCSetMinDebugLogLevel(RTCLoggingSeverityError);
-//#endif
-
+#endif
+  RTCSetMinDebugLogLevel(RTCLoggingSeverityNone);
   return YES;
 }
 

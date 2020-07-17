@@ -313,6 +313,7 @@ static int const kKbpsMultiplier = 1000;
 
 - (void)channel:(id<ARDSignalingChannel>)channel
     didReceiveMessage:(ARDSignalingMessage *)message {
+  NSLog(@"didReceiveMessage:%d",message.type);
   switch (message.type) {
     case kARDSignalingMessageTypeOffer:
     case kARDSignalingMessageTypeAnswer:
@@ -355,7 +356,7 @@ static int const kKbpsMultiplier = 1000;
 
 - (void)peerConnection:(RTCPeerConnection *)peerConnection
     didChangeSignalingState:(RTCSignalingState)stateChanged {
-  RTCLog(@"Signaling state changed: %ld", (long)stateChanged);
+  NSLog(@"Signaling state changed: %ld", (long)stateChanged);
 }
 
 - (void)peerConnection:(RTCPeerConnection *)peerConnection
@@ -369,23 +370,23 @@ static int const kKbpsMultiplier = 1000;
 
 - (void)peerConnection:(RTCPeerConnection *)peerConnection
     didStartReceivingOnTransceiver:(RTCRtpTransceiver *)transceiver {
-    RTCLog(@"didStartReceivingOnTransceiver");
+    NSLog(@"didStartReceivingOnTransceiver");
   RTCMediaStreamTrack *track = transceiver.receiver.track;
   NSLog(@"Now receiving %@ on track %@.", track.kind, track.trackId);
 }
 
 - (void)peerConnection:(RTCPeerConnection *)peerConnection
        didRemoveStream:(RTCMediaStream *)stream {
-  RTCLog(@"Stream was removed.");
+  NSLog(@"Stream was removed.");
 }
 
 - (void)peerConnectionShouldNegotiate:(RTCPeerConnection *)peerConnection {
-  RTCLog(@"WARNING: Renegotiation needed but unimplemented.");
+  NSLog(@"WARNING: Renegotiation needed but unimplemented.");
 }
 
 - (void)peerConnection:(RTCPeerConnection *)peerConnection
     didChangeIceConnectionState:(RTCIceConnectionState)newState {
-  RTCLog(@"ICE state changed: %ld", (long)newState);
+  NSLog(@"ICE state changed: %ld", (long)newState);
   dispatch_async(dispatch_get_main_queue(), ^{
     [self.delegate appClient:self didChangeConnectionState:newState];
   });
@@ -393,7 +394,7 @@ static int const kKbpsMultiplier = 1000;
 
 - (void)peerConnection:(RTCPeerConnection *)peerConnection
     didChangeConnectionState:(RTCPeerConnectionState)newState {
-  RTCLog(@"ICE+DTLS state changed: %ld", (long)newState);
+  NSLog(@"ICE+DTLS state changed: %ld", (long)newState);
 }
 
 - (void)peerConnection:(RTCPeerConnection *)peerConnection
@@ -534,6 +535,7 @@ static int const kKbpsMultiplier = 1000;
     @"expires" : @100000,
     @"name" : @"RSASSA-PKCS1-v1_5"
   }];
+  NSLog([_iceServers description]);
   config.iceServers = _iceServers;
   config.sdpSemantics = RTCSdpSemanticsUnifiedPlan;
   
@@ -545,8 +547,9 @@ static int const kKbpsMultiplier = 1000;
   // Create AV senders.
   [self createMediaSenders];
   RTCVideoTrack *track = (RTCVideoTrack *)([self videoTransceiver].receiver.track);
-  if (_isInitiator) {
+  if (!_isInitiator) {
     // Send offer.
+    NSLog(@"Send offer");
     __weak ARDAppClient *weakSelf = self;
     [_peerConnection offerForConstraints:[self defaultOfferConstraints]
                        completionHandler:^(RTCSessionDescription *sdp,
@@ -557,9 +560,23 @@ static int const kKbpsMultiplier = 1000;
                                 error:error];
     }];
   } else {
+//      NSLog(@"Send answer");
+      //RTCMediaConstraints *constraints = [self defaultAnswerConstraints];
+//      __weak ARDAppClient *weakSelf = self;
+//      [self.peerConnection answerForConstraints:[self defaultAnswerConstraints]
+//                              completionHandler:^(RTCSessionDescription *sdp, NSError *error) {
+//                                  ARDAppClient *strongSelf = weakSelf;
+//                                  [strongSelf peerConnection:strongSelf.peerConnection
+//                                 didCreateSessionDescription:sdp
+//                                                       error:error];
+//                              }];
+      
     // Check if we've received an offer.
     [self drainMessageQueueIfReady];
   }
+  
+  
+  
 #if defined(WEBRTC_IOS)
   // Start event log.
   if (kARDAppClientEnableRtcEventLog) {

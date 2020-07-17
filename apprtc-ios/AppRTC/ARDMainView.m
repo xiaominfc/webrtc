@@ -36,6 +36,7 @@ static CGFloat const kCallControlMargin = 16;
     _roomText.clearButtonMode = UITextFieldViewModeAlways;
     _roomText.delegate = self;
     _roomText.text = @"1234567";
+    _roomText.textColor = UIColor.whiteColor;
     [self addSubview:_roomText];
 
     // Give rounded corners and a light gray border.
@@ -81,23 +82,26 @@ static CGFloat const kCallControlMargin = 16;
 
 - (instancetype)initWithFrame:(CGRect)frame {
   if (self = [super initWithFrame:frame]) {
+    self.backgroundColor = [UIColor colorWithRed:33.0/255.0 green:33.0/255.0 blue:33.0/255.0 alpha:1.0];
     _roomText = [[ARDRoomTextField alloc] initWithFrame:CGRectZero];
+    
     [self addSubview:_roomText];
 
     UIFont *controlFont = [UIFont boldSystemFontOfSize:18.0];
     UIColor *controlFontColor = [UIColor whiteColor];
 
     _startRegularCallButton = [UIButton buttonWithType:UIButtonTypeRoundedRect];
+
     _startRegularCallButton.titleLabel.font = controlFont;
     [_startRegularCallButton setTitleColor:controlFontColor forState:UIControlStateNormal];
-    _startRegularCallButton.backgroundColor
-        = [UIColor colorWithRed:66.0/255.0 green:200.0/255.0 blue:90.0/255.0 alpha:1.0];
+//    _startRegularCallButton.backgroundColor
+//        = [UIColor colorWithRed:66.0/255.0 green:200.0/255.0 blue:90.0/255.0 alpha:1.0];
     [_startRegularCallButton setTitle:@"Join room" forState:UIControlStateNormal];
     [_startRegularCallButton addTarget:self
                                 action:@selector(onStartRegularCall:)
                       forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:_startRegularCallButton];
-    self.backgroundColor = [UIColor whiteColor];
+    //self.backgroundColor = [UIColor whiteColor];
   }
   return self;
 }
@@ -110,6 +114,7 @@ static CGFloat const kCallControlMargin = 16;
   _roomText.frame =
       CGRectMake(kRoomTextFieldMargin, kRoomTextFieldMargin, roomTextWidth,
                  roomTextHeight);
+  _roomText.center = CGPointMake(CGRectGetWidth(self.bounds)/2,CGRectGetHeight(self.bounds)/2 - 100);
   CGFloat buttonHeight = 60;
   CGFloat regularCallFrameTop = CGRectGetMaxY(_roomText.frame) + kCallControlMargin;
   CGRect regularCallFrame = CGRectMake(kCallControlMargin,
@@ -117,22 +122,6 @@ static CGFloat const kCallControlMargin = 16;
                                        bounds.size.width - 2*kCallControlMargin,
                                        buttonHeight);
    _startRegularCallButton.frame = regularCallFrame;
-//
-//  CGFloat loopbackCallFrameTop = CGRectGetMaxY(regularCallFrame) + kCallControlMargin;
-//  CGRect loopbackCallFrame = CGRectMake(kCallControlMargin,
-//                                        loopbackCallFrameTop,
-//                                        bounds.size.width - 2*kCallControlMargin,
-//                                        buttonHeight);
-//
-//  CGFloat audioLoopTop = CGRectGetMaxY(loopbackCallFrame) + kCallControlMargin;
-//  CGRect audioLoopFrame = CGRectMake(kCallControlMargin,
-//                                     audioLoopTop,
-//                                     bounds.size.width - 2*kCallControlMargin,
-//                                     buttonHeight);
-//
- 
-//  _startLoopbackCallButton.frame = loopbackCallFrame;
-  //_audioLoopButton.frame = audioLoopFrame;
 }
 
 #pragma mark - Private

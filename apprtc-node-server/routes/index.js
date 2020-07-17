@@ -13,7 +13,8 @@ const MAXUsersCount = 100;
 var constants = {
   LOOPBACK_CLIENT_ID: 'LOOPBACK_CLIENT_ID',
   //TURN_BASE_URL: 'https://computeengineondemand.appspot.com',
-  ICE_SERVER_BASE_URL: 'https://apprtc.xiaominfc.com',
+	//ICE_SERVER_BASE_URL: 'https://apprtc.xiaominfc.com',
+  ICE_SERVER_BASE_URL: 'http://192.168.0.153:3000',
   ICE_SERVER_URL_TEMPLATE: '%s/turn?username=%s&key=%s',
   CEOD_KEY: '4080218913',
   WSS_HOST_ACTIVE_HOST_KEY: 'wss_host_active_host', //memcache key for the active collider host.
@@ -319,7 +320,9 @@ function getRoomParameters(req, roomId, clientId, isInitiator) {
 }
 
 function getCacheKeyForRoom(host, roomId) {
-  return host + "/" + roomId;
+  //console.log(host + "/" + roomId)
+  //return host + "/" + roomId;
+  return roomId
 }
 
 function addClientToRoom(req, roomId, clientId, isLoopback, callback) {
@@ -407,15 +410,19 @@ router.post('/join/:roomId', function (req, res, next) {
       console.error('Error adding client to room: ' + error + ', room_state=' + result.room_state);
       res.send({ result: error, params: result });
       return;
-    }
+		}
+		console.log(result);
     var params = getRoomParameters(req, roomId, clientId, result.is_initiator);
     params.messages = result.messages;
     //TODO(tkchin): Clean up response format. For simplicity put everything in
-    //params for now.
-    res.send({
+		//params for now.
+
+		var out_result = {
       result: 'SUCCESS',
       params: params
-    });
+    };
+		res.send(out_result);
+		console.log(out_result);
     console.log('User ' + clientId + ' joined room ' + roomId);
     console.log('Room ' + roomId + ' has state ' + result.room_state);
 
