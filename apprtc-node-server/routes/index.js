@@ -13,8 +13,8 @@ const MAXUsersCount = 100;
 var constants = {
   LOOPBACK_CLIENT_ID: 'LOOPBACK_CLIENT_ID',
   //TURN_BASE_URL: 'https://computeengineondemand.appspot.com',
-	//ICE_SERVER_BASE_URL: 'https://apprtc.xiaominfc.com',
-  ICE_SERVER_BASE_URL: 'http://192.168.0.153:3000',
+  ICE_SERVER_BASE_URL: 'https://apprtc.xiaominfc.com',
+  //ICE_SERVER_BASE_URL: 'http://192.168.0.153:3000',
   ICE_SERVER_URL_TEMPLATE: '%s/turn?username=%s&key=%s',
   CEOD_KEY: '4080218913',
   WSS_HOST_ACTIVE_HOST_KEY: 'wss_host_active_host', //memcache key for the active collider host.
