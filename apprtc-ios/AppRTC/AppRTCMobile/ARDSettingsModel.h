@@ -82,6 +82,11 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)storeMaxBitrateSetting:(nullable NSNumber *)bitrate;
 
+- (nullable NSString *)currentApprtcServerSettingFromStore;
+
+- (void)storeApprtcServerSetting:(nullable NSString *)url;
+
+
 /**
  * Returns current audio only setting from store if present or default (NO) otherwise.
  */

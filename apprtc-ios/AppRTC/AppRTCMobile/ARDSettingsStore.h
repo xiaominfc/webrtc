@@ -44,6 +44,9 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)setMaxBitrate:(nullable NSNumber *)value;
 
+- (nullable NSString *)apprtcServer;
+- (void)setApprtcServer:(nullable NSString *)value;
+
 @property(nonatomic) BOOL audioOnly;
 @property(nonatomic) BOOL createAecDump;
 @property(nonatomic) BOOL useManualAudioConfig;

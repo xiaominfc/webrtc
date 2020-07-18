@@ -13,6 +13,7 @@
 static NSString *const kVideoResolutionKey = @"rtc_video_resolution_key";
 static NSString *const kVideoCodecKey = @"rtc_video_codec_info_key";
 static NSString *const kBitrateKey = @"rtc_max_bitrate_key";
+static NSString *const kApprtcServerKey = @"rtc_server_key";
 static NSString *const kAudioOnlyKey = @"rtc_audio_only_key";
 static NSString *const kCreateAecDumpKey = @"rtc_create_aec_dump_key";
 static NSString *const kUseManualAudioConfigKey = @"rtc_use_manual_audio_config_key";
@@ -82,6 +83,17 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setMaxBitrate:(nullable NSNumber *)value {
   [self.storage setObject:value forKey:kBitrateKey];
   [self.storage synchronize];
+}
+
+
+
+- (nullable NSString *)apprtcServer {
+    return [self.storage objectForKey:kApprtcServerKey];
+}
+
+- (void)setApprtcServer:(nullable NSString *)value {
+    [self.storage setObject:value forKey:kApprtcServerKey];
+    [self.storage synchronize];
 }
 
 - (BOOL)audioOnly {

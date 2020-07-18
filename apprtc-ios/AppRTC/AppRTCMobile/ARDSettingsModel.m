@@ -99,6 +99,20 @@ NS_ASSUME_NONNULL_BEGIN
   [[self settingsStore] setMaxBitrate:bitrate];
 }
 
+
+- (nullable NSString *)currentApprtcServerSettingFromStore {
+    [self registerStoreDefaults];
+    NSString *result = [[self settingsStore] apprtcServer];
+    if(!result){
+        result = @"https://apprtc.xiaominfc.com";
+    }
+    return result;
+}
+
+- (void)storeApprtcServerSetting:(nullable NSString *)url {
+    [[self settingsStore] setApprtcServer:url];
+}
+
 - (BOOL)currentAudioOnlySettingFromStore {
   return [[self settingsStore] audioOnly];
 }

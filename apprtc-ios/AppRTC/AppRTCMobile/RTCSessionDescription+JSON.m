@@ -29,7 +29,7 @@ static NSString const *kRTCSessionDescriptionSdpKey = @"sdp";
     kRTCSessionDescriptionTypeKey : type,
     kRTCSessionDescriptionSdpKey : self.sdp
   };
-  return [NSJSONSerialization dataWithJSONObject:json options:0 error:nil];
+  return [NSJSONSerialization dataWithJSONObject:json options:NSJSONWritingPrettyPrinted error:nil];
 }
 
 @end

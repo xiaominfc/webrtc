@@ -16,23 +16,43 @@
 #import "ARDMessageResponse.h"
 #import "ARDSignalingMessage.h"
 #import "ARDUtilities.h"
+#import "ARDSettingsModel.h"
 
 // TODO(tkchin): move these to a configuration object.
 static NSString * const kARDRoomServerHostUrl =
     @"https://apprtc.xiaominfc.com";
 static NSString * const kARDRoomServerJoinFormat =
-    @"https://apprtc.xiaominfc.com/join/%@";
+    @"%@/join/%@";
 static NSString * const kARDRoomServerJoinFormatLoopback =
-    @"https://apprtc.xiaominfc.com/join/%@?debug=loopback";
+    @"%@/join/%@?debug=loopback";
 static NSString * const kARDRoomServerMessageFormat =
-    @"https://apprtc.xiaominfc.com/message/%@/%@";
+    @"%@/message/%@/%@";
 static NSString * const kARDRoomServerLeaveFormat =
-    @"https://apprtc.xiaominfc.com/leave/%@/%@";
+    @"%@/leave/%@/%@";
 
 static NSString * const kARDAppEngineClientErrorDomain = @"ARDAppEngineClient";
 static NSInteger const kARDAppEngineClientErrorBadResponse = -1;
 
-@implementation ARDAppEngineClient
+
+
+@implementation ARDAppEngineClient {
+    NSString* baseHostUrl;
+}
+
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        ARDSettingsModel *model = [[ARDSettingsModel alloc] init];
+        NSString *baseUrl = [model currentApprtcServerSettingFromStore];
+        baseHostUrl =kARDRoomServerHostUrl;
+        if(baseUrl){
+            baseHostUrl = baseUrl;
+        }
+    }
+    return self;
+}
 
 #pragma mark - ARDRoomServerClient
 
@@ -45,10 +65,10 @@ static NSInteger const kARDAppEngineClientErrorBadResponse = -1;
   NSString *urlString = nil;
   if (isLoopback) {
     urlString =
-        [NSString stringWithFormat:kARDRoomServerJoinFormatLoopback, roomId];
+        [NSString stringWithFormat:kARDRoomServerJoinFormatLoopback, baseHostUrl,roomId];
   } else {
     urlString =
-        [NSString stringWithFormat:kARDRoomServerJoinFormat, roomId];
+        [NSString stringWithFormat:kARDRoomServerJoinFormat, baseHostUrl,roomId];
   }
 
   NSURL *roomURL = [NSURL URLWithString:urlString];
@@ -89,9 +109,10 @@ static NSInteger const kARDAppEngineClientErrorBadResponse = -1;
   NSData *data = [message JSONData];
   NSString *urlString =
       [NSString stringWithFormat:
-          kARDRoomServerMessageFormat, roomId, clientId];
+          kARDRoomServerMessageFormat,baseHostUrl, roomId, clientId];
   NSURL *url = [NSURL URLWithString:urlString];
   RTCLog(@"C->RS POST: %@", message);
+  NSLog(@"C->RS POST: %@", message);
   NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
   request.HTTPMethod = @"POST";
   request.HTTPBody = data;
@@ -128,7 +149,7 @@ static NSInteger const kARDAppEngineClientErrorBadResponse = -1;
   NSParameterAssert(clientId.length);
 
   NSString *urlString =
-      [NSString stringWithFormat:kARDRoomServerLeaveFormat, roomId, clientId];
+      [NSString stringWithFormat:kARDRoomServerLeaveFormat,baseHostUrl, roomId, clientId];
   NSURL *url = [NSURL URLWithString:urlString];
   NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
   request.HTTPMethod = @"POST";
