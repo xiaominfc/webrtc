@@ -542,4 +542,15 @@ router.post('/leave/:roomId/:clientId', function (req, res, next) {
   res.send({ result: constants.RESPONSE_SUCCESS });
 });
 
+
+router.post('/bye/:roomId/:clientId', function (req, res, next) {
+
+	var roomId = req.params.roomId;
+	var clientId = req.params.clientId;
+	console.log(req.body);
+	res.send({ result: constants.RESPONSE_SUCCESS });
+});
+  
+
+
 module.exports = router;
